@@ -87,7 +87,7 @@ const SliderRow = ({ label, value, min, max, step = 1, onChange, color }) => (
       <input
         type="range" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ position: "absolute", inset: 0, width: "100%", opacity: 0, cursor: "pointer", height: "100%", margin: 0 }}
+        style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: "100%", opacity: 0, cursor: "pointer", height: "44px", margin: 0, zIndex: 3 }}
       />
     </div>
   </div>

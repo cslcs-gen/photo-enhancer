@@ -397,14 +397,37 @@ export default function LuminaMobileV2() {
           </div>
         </div>
 
-        {/* ── Reset Button ── */}
+        {/* ── Download + Reset Buttons ── */}
         {imageSrc && activePreset && !isProcessing && (
-          <div style={{ margin: "10px 14px 0" }}>
+          <div style={{ margin: "10px 14px 0", display: "flex", gap: 8 }}>
+            <button
+              onClick={() => {
+                const canvas = document.createElement("canvas");
+                const img = document.querySelector("img[alt='']");
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.filter = img.style.filter || "none";
+                ctx.drawImage(img, 0, 0);
+                const link = document.createElement("a");
+                link.download = "lumina-" + activePreset.toLowerCase() + "-" + Date.now() + ".jpg";
+                link.href = canvas.toDataURL("image/jpeg", 0.95);
+                link.click();
+              }}
+              style={{ flex: 1, padding: "10px", borderRadius: 9, border: "1px solid rgba(192,240,96,0.3)", background: "rgba(192,240,96,0.06)", color: "#c8f060", fontFamily: "monospace", fontSize: "0.62rem", letterSpacing: "0.14em", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              DOWNLOAD
+            </button>
             <button
               onClick={() => { setActivePreset(null); setResultInfo(null); setShowAdj(false); setAdj(DEFAULT_ADJ); }}
-              style={{ width: "100%", padding: "10px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.07)", background: "transparent", color: "#555566", fontFamily: "monospace", fontSize: "0.62rem", letterSpacing: "0.14em", cursor: "pointer" }}
+              style={{ flex: 1, padding: "10px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.07)", background: "transparent", color: "#555566", fontFamily: "monospace", fontSize: "0.62rem", letterSpacing: "0.14em", cursor: "pointer" }}
             >
-              RESET TO ORIGINAL
+              RESET
             </button>
           </div>
         )}

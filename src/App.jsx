@@ -428,6 +428,9 @@ export default function LuminaMobileV2() {
             <span style={{ fontFamily: "monospace", fontSize: "0.58rem", color: "#2a3a1a", background: "rgba(192,240,96,0.07)", border: "1px solid rgba(192,240,96,0.12)", borderRadius: 4, padding: "1px 6px" }}>
               v2.0
             </span>
+            <span style={{ fontFamily: "monospace", fontSize: "0.55rem", color: "#333344", marginLeft: 5 }}>
+              21 Mar 2026
+            </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ fontSize: "0.6rem", color: "#333344", fontFamily: "monospace" }}>Powered by</span>

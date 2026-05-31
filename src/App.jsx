@@ -108,7 +108,9 @@ function BrandLogo({ brand, size = 44, isWhite }) {
   const logos = {
     LEICA: () => (
       <div style={{ width:size, height:size, borderRadius:"50%", background:"#E30613", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-        <span style={{ fontFamily:"Georgia,'Times New Roman',serif", fontStyle:"italic", fontWeight:400, fontSize:Math.round(size*0.28), color:"#fff", letterSpacing:"-0.01em" }}>Leica</span>
+        <svg viewBox="0 0 200 200" width={size} height={size}>
+          <text x="100" y="118" textAnchor="middle" fontFamily="Garamond,Georgia,serif" fontStyle="italic" fontWeight="300" fontSize="52" fill="#FFFFFF">Leica</text>
+        </svg>
       </div>
     ),
     CANON: () => (

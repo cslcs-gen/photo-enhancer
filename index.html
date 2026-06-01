@@ -1,13 +1,490 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>LUMINA — AI Photo Enhancer</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-DX4jLxLw.js"></script>
-</head>
-<body>
-<div id="root"></div>
-</body>
-</html>
+import { useState, useRef, useCallback } from "react";
+
+// ─── EXIF Reader ──────────────────────────────────────────────────────────────
+function readEXIF(buffer) {
+  try {
+    const view = new DataView(buffer);
+    if (view.getUint16(0) !== 0xFFD8) return null;
+    let offset = 2;
+    while (offset < view.byteLength - 4) {
+      const marker = view.getUint16(offset);
+      if (marker === 0xFFE1) {
+        const len = view.getUint16(offset + 2);
+        const header = String.fromCharCode(...new Uint8Array(buffer, offset + 4, 4));
+        if (header === "Exif") return parseIFD(buffer, offset + 10);
+        offset += 2 + len;
+      } else if ((marker & 0xFF00) === 0xFF00) {
+        offset += 2 + view.getUint16(offset + 2);
+      } else break;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function parseIFD(buffer, tiffStart) {
+  try {
+    const view = new DataView(buffer, tiffStart);
+    const le = view.getUint16(0) === 0x4949;
+    const ifd0 = view.getUint32(4, le);
+    const tags = readTags(buffer, tiffStart, ifd0, le);
+    const exifIFD = readUint32Tag(view, ifd0, 0x8769, le);
+    if (exifIFD) Object.assign(tags, readTags(buffer, tiffStart, exifIFD, le));
+    return tags;
+  } catch(e) { return {}; }
+}
+
+function readUint32Tag(view, ifdOffset, targetTag, le) {
+  try {
+    const count = view.getUint16(ifdOffset, le);
+    for (let i = 0; i < count; i++) {
+      const off = ifdOffset + 2 + i * 12;
+      if (view.getUint16(off, le) === targetTag) return view.getUint32(off + 8, le);
+    }
+  } catch(e) {}
+  return null;
+}
+
+function readTags(buffer, tiffStart, ifdOffset, le) {
+  const view = new DataView(buffer, tiffStart);
+  const tags = {};
+  const wanted = { 0x010F:"make", 0x0110:"model", 0x829A:"exposureTime", 0x829D:"fNumber", 0x8827:"iso", 0x920A:"focalLength", 0x9003:"dateTimeOriginal" };
+  try {
+    const count = view.getUint16(ifdOffset, le);
+    for (let i = 0; i < count; i++) {
+      const off = ifdOffset + 2 + i * 12;
+      const tag = view.getUint16(off, le);
+      const type = view.getUint16(off + 2, le);
+      const num = view.getUint32(off + 4, le);
+      const name = wanted[tag];
+      if (!name) continue;
+      if (type === 2) {
+        const abs = num > 4 ? tiffStart + view.getUint32(off + 8, le) : tiffStart + off + 8;
+        const dv = new DataView(buffer, abs, Math.min(num, 128));
+        let s = "";
+        for (let j = 0; j < num; j++) { const c = dv.getUint8(j); if (!c) break; s += String.fromCharCode(c); }
+        tags[name] = s.trim();
+      } else if (type === 3) { tags[name] = view.getUint16(off + 8, le); }
+      else if (type === 4) { tags[name] = view.getUint32(off + 8, le); }
+      else if (type === 5) {
+        const rOff = tiffStart + view.getUint32(off + 8, le);
+        const dv = new DataView(buffer, rOff);
+        const n = dv.getUint32(0, le), d = dv.getUint32(4, le);
+        tags[name] = d ? n / d : 0;
+      }
+    }
+  } catch(e) {}
+  return tags;
+}
+
+function fmtExposure(v) { if (!v) return null; return v >= 1 ? `${v}s` : `1/${Math.round(1/v)}s`; }
+function fmtF(v)        { if (!v) return null; return `f/${v%1===0?v.toFixed(0):v.toFixed(1)}`; }
+function fmtFL(v)       { if (!v) return null; return `${Math.round(v)}mm`; }
+
+function getBrand(make) {
+  if (!make) return null;
+  const m = make.toUpperCase();
+  if (m.includes("SONY"))       return { name:"SONY",       display:"SONY",       color:"#000000", abbr:"S",  shape:"square" };
+  if (m.includes("CANON"))      return { name:"CANON",      display:"CANON",      color:"#CC0000", abbr:"C",  shape:"square" };
+  if (m.includes("NIKON"))      return { name:"NIKON",      display:"NIKON",      color:"#1a1a1a", abbr:"N",  shape:"square" };
+  if (m.includes("APPLE"))      return { name:"APPLE",      display:"iPhone",     color:"#555555", abbr:"",   shape:"square" };
+  if (m.includes("SAMSUNG"))    return { name:"SAMSUNG",    display:"SAMSUNG",    color:"#1428A0", abbr:"S",  shape:"square" };
+  if (m.includes("LEICA"))      return { name:"LEICA",      display:"LEICA",      color:"#CC0000", abbr:"L",  shape:"circle" };
+  if (m.includes("PANASONIC"))  return { name:"PANASONIC",  display:"LUMIX",      color:"#003087", abbr:"P",  shape:"square" };
+  if (m.includes("OLYMPUS"))    return { name:"OLYMPUS",    display:"OLYMPUS",    color:"#003087", abbr:"O",  shape:"square" };
+  if (m.includes("DJI"))        return { name:"DJI",        display:"DJI",        color:"#000000", abbr:"D",  shape:"square" };
+  if (m.includes("HASSELBLAD")) return { name:"HASSELBLAD", display:"HASSELBLAD", color:"#F5A623", abbr:"H",  shape:"square" };
+  if (m.includes("RICOH"))      return { name:"RICOH",      display:"RICOH",      color:"#003087", abbr:"R",  shape:"square" };
+  if (m.includes("GOPRO"))      return { name:"GOPRO",      display:"GoPro",      color:"#00ADEF", abbr:"G",  shape:"square" };
+  return { name:make.toUpperCase(), display:make.toUpperCase(), color:"#222222", abbr:make[0], shape:"square" };
+}
+
+// Brand logo SVG paths (simplified iconic marks)
+function BrandLogo({ brand, size = 44, isWhite }) {
+  if (!brand) return null;
+  const bg = isWhite ? "#ffffff" : "#1a1a22";
+  const border = isWhite ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.1)";
+
+  const logos = {
+    LEICA: () => (
+      <svg viewBox="0 0 200 200" width={size} height={size} style={{ flexShrink:0 }}>
+        <path d="M99.9956 200C155.223 200 200 155.232 200 100.022C200 44.7855 155.223 1.52588e-05 99.9956 1.52588e-05C44.759 1.52588e-05 0 44.7855 0 100.022C0 155.232 44.759 200 99.9956 200Z" fill="#E20612"/>
+        <path d="M67.6897 55.3426C48.8248 54.6106 43.7183 81.4131 42.5541 85.9904C42.4924 86.3167 42.3336 86.4314 42.3336 86.4314C36.5127 85.6376 33.2936 84.447 33.2936 84.447L31.9707 88.1953C35.8954 90.0562 41.6721 90.6206 41.6721 90.6206C40.5432 97.8262 34.837 111.346 34.837 111.346C34.837 111.346 29.7746 109.803 23.3717 109.803C15.046 109.803 12.118 113.719 11.9063 116.197C11.3595 122.618 19.4999 125.678 25.1356 125.678C36.1335 125.678 41.8926 119.725 41.8926 119.725C41.8926 119.725 72.6815 131.411 104.952 131.411C147.189 131.411 182.784 120.166 182.784 120.166L181.682 116.197C181.682 116.197 155.885 125.184 106.496 124.576C72.4258 124.161 46.3024 114.213 46.3024 114.213C46.3024 114.213 47.2902 112.449 47.8458 111.346C51.2589 104.388 55.3424 90.4001 55.3424 90.4001C55.3424 90.4001 78.7141 83.8561 78.7141 65.2645C78.7141 59.3819 73.0961 55.5807 67.6897 55.3426ZM68.5716 60.6343C72.1965 60.6343 73.5018 63.5006 73.2019 66.1465C71.438 81.6776 56.0038 85.3289 56.0038 85.3289C56.0038 85.3289 59.7345 60.6343 68.5716 60.6343ZM106.055 73.4226C102.13 73.4226 99.4399 75.0366 99.4399 78.7143C99.4399 82.4361 102.58 83.3445 106.055 83.3445C109.538 83.3445 112.89 81.8452 112.89 78.0528C112.89 74.2516 108.894 73.4226 106.055 73.4226ZM158.31 86.8723C147.039 86.8723 140.936 96.5914 140.671 102.306C140.618 103.55 140.451 103.629 140.451 103.629C140.186 103.929 136.305 108.48 131.411 108.48C127.495 108.48 126.78 105.287 126.78 103.188C126.78 100.913 128.721 91.9436 134.057 91.9436C136.958 91.9436 138.687 94.3689 138.687 94.3689L140.23 89.2977C140.23 89.2977 137.796 87.331 132.734 87.3133C121.833 87.3045 114.477 95.3743 114.213 102.747C114.16 103.85 113.974 104.22 113.992 104.291C113.631 104.732 111.082 107.819 107.598 107.819C105.217 107.819 105.173 105.993 105.173 105.173C105.173 104.053 109.803 87.9748 109.803 87.9748L97.4555 88.1953L93.2663 103.85C93.2663 103.85 86.3871 108.692 76.9502 109.362C72.0818 109.697 70.3355 106.69 70.3355 104.952C70.3356 104.229 70.3355 104.291 70.3355 104.291C70.3444 104.291 72.3817 104.511 73.8634 104.511C75.0275 104.511 89.518 103.391 89.518 94.5894C89.518 89.5535 84.4115 87.7543 78.0526 87.7543C66.2962 87.7543 57.9882 94.9775 57.9882 103.629C57.9882 111.523 64.7263 114.874 73.4224 114.874C83.2914 114.874 93.0458 108.921 93.0458 108.921C93.0458 108.921 93.6367 114.874 101.424 114.874C109.459 114.874 115.756 108.921 115.756 108.921C115.756 108.921 119.231 114.654 127.221 114.654C135.388 114.654 141.553 108.039 141.553 108.039C141.553 108.039 143.829 114.213 151.916 114.213C158.24 114.213 161.617 110.244 161.617 110.244C161.617 110.244 163.381 114.213 168.894 114.213C175.623 114.213 180.579 109.583 180.579 109.583L179.477 105.614C179.477 105.614 176.919 107.598 175.067 107.598C173.665 107.598 172.862 106.46 172.862 105.173C172.862 102.28 177.493 87.9748 177.493 87.9748L166.248 88.1953L165.807 89.9592C165.807 89.9592 164.131 86.8723 158.31 86.8723ZM78.4936 91.2821C80.1517 91.3791 81.4129 92.4992 81.3599 93.7075C81.0865 101.539 71.438 100.322 71.438 100.322C71.438 100.322 72.8579 90.9381 78.4936 91.2821ZM160.515 91.5026C162.835 91.5026 164.043 93.3459 164.043 94.8099C164.043 95.1098 162.729 108.48 156.105 108.48C153.071 108.48 153.018 105.032 153.018 104.07C153.018 101.522 155.02 91.5026 160.515 91.5026ZM21.1668 114.654C21.7427 114.596 22.2097 114.619 22.7102 114.654C27.5345 114.918 31.7502 116.638 31.7502 116.638C31.7502 116.638 26.7848 120.483 22.7102 120.607C19.5969 120.704 17.639 118.675 17.639 117.52C17.639 115.602 19.4391 114.828 21.1668 114.654Z" fill="white"/>
+      </svg>
+    ),
+    CANON: () => (
+                </div>
+        </div>
+
+        {/* FIX 1: Feature tabs immediately below header — always visible */}
+        <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
+          {[["enhance","✨ Enhance"],["frame","🖼️ EXIF Frame"]].map(([id,label]) => (
+            <button key={id} onClick={() => setActiveFeature(id)}
+              style={{ flex:1, padding:"10px 0", fontFamily:"monospace", fontSize:"0.6rem", letterSpacing:"0.1em", background:"transparent", border:"none", cursor:"pointer", color:activeFeature===id?"#c8f060":"#444455", borderBottom:`2px solid ${activeFeature===id?"#c8f060":"transparent"}`, transition:"all 0.2s" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Scrollable content area */}
+        <div style={{ flex:1, overflowY:"auto", overflowX:"hidden", paddingBottom:8, WebkitOverflowScrolling:"touch", minHeight:0 }}>
+
+          {/* Image Upload */}
+          <div style={{ margin:"12px 14px 0" }}>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDragging(false); loadImage(e.dataTransfer.files[0]); }}
+              onClick={() => !imageSrc && fileRef.current?.click()}
+              style={{ borderRadius:14, overflow:"hidden", position:"relative", background:imageSrc?"#000":"#111116", border:`1px ${imageSrc?"solid":"dashed"} ${isDragging?"#c8f060":imageSrc?"rgba(255,255,255,0.06)":"rgba(192,240,96,0.18)"}`, minHeight:imageSrc?240:160, display:"flex", alignItems:"center", justifyContent:"center", cursor:imageSrc?"default":"pointer", transition:"all 0.3s" }}
+            >
+              {!imageSrc ? (
+                <div style={{ textAlign:"center", padding:20 }}>
+                  <div style={{ width:50, height:50, border:"1px solid rgba(192,240,96,0.22)", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c8f060" strokeWidth="1.5" opacity="0.55">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontSize:"0.88rem", color:"#c8f060", fontWeight:500, marginBottom:4 }}>Tap to upload photo</div>
+                  <div style={{ fontSize:"0.68rem", color:"#333344" }}>JPG · PNG · WEBP</div>
+                </div>
+              ) : (
+                <>
+                  <img alt="main-photo" src={imageSrc} style={{ width:"100%", minHeight:240, objectFit:"cover", display:"block", filter:currentFilter(), transition:"filter 0.5s ease" }} />
+                  <div style={{ position:"absolute", inset:0, background:currentOverlay, pointerEvents:"none", transition:"background 0.5s" }} />
+                  <button onClick={() => fileRef.current?.click()} style={{ position:"absolute", top:10, right:10, background:"rgba(0,0,0,0.65)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:7, padding:"5px 10px", color:"#e8e8f0", fontSize:"0.6rem", fontFamily:"monospace", letterSpacing:"0.1em", cursor:"pointer" }}>CHANGE</button>
+                  {activePreset && (
+                    <div style={{ position:"absolute", top:10, left:10, background:"rgba(0,0,0,0.7)", border:`1px solid ${preset?.color}`, borderRadius:7, padding:"4px 9px", fontSize:"0.58rem", fontFamily:"monospace", color:preset?.color, letterSpacing:"0.1em" }}>
+                      {preset?.emoji} {activePreset.toUpperCase()}
+                    </div>
+                  )}
+                </>
+              )}
+              {progress > 0 && (
+                <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:"rgba(255,255,255,0.05)" }}>
+                  <div style={{ height:"100%", width:`${progress}%`, background:"linear-gradient(90deg,#c8f060,#6070f0)", transition:"width 0.15s linear", borderRadius:2 }} />
+                </div>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={(e) => loadImage(e.target.files[0])} />
+          </div>
+
+          {/* Processing */}
+              </div>
+              <span style={{ fontSize:"0.72rem", color:"#777788" }}>Claude AI is analyzing your photo...</span>
+            </div>
+          )}
+
+          {/* ══ ENHANCE TAB ══════════════════════════════════════════════════ */}
+          {activeFeature === "enhance" && (
+            <>
+              {resultInfo && (
+                <div style={{ margin:"10px 14px 0", background:"#111116", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"12px", animation:"fadeUp 0.35s ease" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+                    <span style={{ fontSize:"0.9rem" }}>{resultInfo.preset.emoji}</span>
+                    <span style={{ fontFamily:"monospace", fontSize:"0.58rem", letterSpacing:"0.14em", color:resultInfo.preset.color, textTransform:"uppercase", fontWeight:600 }}>{resultInfo.preset.id} Applied</span>
+                  </div>
+                  <p style={{ fontSize:"0.74rem", color:"#777788", lineHeight:1.7, margin:"0 0 7px" }}>{resultInfo.desc}</p>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                    {resultInfo.adj.map((a,i) => <span key={i} style={{ fontFamily:"monospace", fontSize:"0.54rem", color:"#555566", background:"#1a1a22", border:"1px solid rgba(255,255,255,0.06)", borderRadius:4, padding:"2px 6px" }}>{a}</span>)}
+                  </div>
+                </div>
+              )}
+
+              {showAdj && preset && (
+                <div style={{ margin:"10px 14px 0", background:"#0e0e14", border:`1px solid ${preset.color}22`, borderRadius:12, overflow:"hidden", animation:"fadeUp 0.4s ease" }}>
+                  <div style={{ padding:"10px 13px", borderBottom:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={preset.color} strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.58rem", letterSpacing:"0.16em", color:preset.color, textTransform:"uppercase" }}>Fine Tune</span>
+                    </div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      <button onClick={() => setAdj(DEFAULT_ADJ)} style={{ fontFamily:"monospace", fontSize:"0.54rem", color:"#555566", background:"transparent", border:"1px solid rgba(255,255,255,0.07)", borderRadius:5, padding:"2px 7px", cursor:"pointer" }}>RESET</button>
+                      <button onClick={saveSettings} style={{ fontFamily:"monospace", fontSize:"0.54rem", color:preset.color, background:`${preset.color}15`, border:`1px solid ${preset.color}40`, borderRadius:5, padding:"2px 7px", cursor:"pointer" }}>SAVE</button>
+                    </div>
+                  </div>
+                  <div style={{ padding:"12px 13px 4px" }}>
+                    {preset.sliders.map(key => (
+                      <SliderRow key={key} label={SLIDER_CONFIG[key].label} value={adj[key]} min={SLIDER_CONFIG[key].min} max={SLIDER_CONFIG[key].max} onChange={v => updateAdj(key, v)} color={preset.color} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {imageSrc && activePreset && (
+                <div style={{ margin:"10px 14px 0", display:"flex", gap:7 }}>
+                  <button onClick={downloadPhoto} style={{ flex:1, padding:"10px", borderRadius:9, border:"1px solid rgba(192,240,96,0.3)", background:"rgba(192,240,96,0.06)", color:"#c8f060", fontFamily:"monospace", fontSize:"0.58rem", letterSpacing:"0.12em", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:5 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    DOWNLOAD
+                  </button>
+                  <button onClick={() => { setActivePreset(null); setResultInfo(null); setShowAdj(false); setAdj(DEFAULT_ADJ); }} style={{ flex:1, padding:"10px", borderRadius:9, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:"#555566", fontFamily:"monospace", fontSize:"0.58rem", letterSpacing:"0.12em", cursor:"pointer" }}>
+                    RESET
+                  </button>
+                </div>
+              )}
+
+              {/* Preset import */}
+              <div style={{ margin:"10px 14px 0" }}>
+                <input ref={presetFileRef} type="file" accept=".json" style={{ display:"none" }} onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    try {
+                      const imported = JSON.parse(ev.target.result);
+                      const presets = Array.isArray(imported) ? imported : [imported];
+                      const valid = presets.filter(p => p.presetId && p.adj && p.name);
+                      if (valid.length === 0) { showToast("❌ Invalid preset file"); return; }
+                      setSavedPresets(prev => {
+                        const updated = [...valid.map(p => ({ ...p, id:Date.now()+Math.random() })), ...prev];
+                        try { localStorage.setItem('lumina_presets', JSON.stringify(updated)); } catch {}
+                        return updated;
+                      });
+                      showToast(`✓ Imported ${valid.length} preset(s)`);
+                    } catch { showToast("❌ Could not read file"); }
+                  };
+                  reader.readAsText(file);
+                  e.target.value = '';
+                }} />
+                <button onClick={() => presetFileRef.current?.click()}
+                  style={{ width:"100%", padding:"9px", borderRadius:8, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:"#555566", fontFamily:"monospace", fontSize:"0.56rem", letterSpacing:"0.12em", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  IMPORT PRESET FILE (.json)
+                </button>
+              </div>
+
+              {savedPresets.length > 0 && (
+                <div style={{ margin:"14px 14px 0" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <div style={{ width:4, height:4, borderRadius:"50%", background:"#c8f060" }} />
+                      <span style={{ fontFamily:"monospace", fontSize:"0.56rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"#444455" }}>Saved Presets ({savedPresets.length})</span>
+                    </div>
+                    <button onClick={() => {
+                      const data = JSON.stringify(savedPresets, null, 2);
+                      const blob = new Blob([data], {type:"application/json"});
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = "lumina-presets.json"; a.click();
+                      URL.revokeObjectURL(url);
+                      showToast("✓ Presets exported");
+                    }} style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", background:"transparent", border:"1px solid rgba(255,255,255,0.07)", borderRadius:5, padding:"3px 7px", cursor:"pointer" }}>EXPORT</button>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    {savedPresets.map(saved => (
+                      <div key={saved.id} style={{ background:"#111116", border:`1px solid ${saved.color}22`, borderRadius:10, padding:"10px 12px", display:"flex", alignItems:"center", gap:9 }}>
+                        <span style={{ fontSize:"1rem" }}>{saved.emoji}</span>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:"0.72rem", color:saved.color, fontWeight:600, marginBottom:2 }}>{saved.name}</div>
+                          <div style={{ display:"flex", flexWrap:"wrap", gap:3 }}>
+                            {Object.entries(saved.adj).filter(([,v])=>v!==0).map(([k,v]) => (
+                              <span key={k} style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#444455", background:"#1a1a22", border:"1px solid rgba(255,255,255,0.05)", borderRadius:3, padding:"1px 5px" }}>{SLIDER_CONFIG[k]?.label} {v>0?`+${v}`:v}</span>
+                            ))}
+                            {Object.values(saved.adj).every(v=>v===0) && <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#333344" }}>Default</span>}
+                          </div>
+                        </div>
+                        <div style={{ display:"flex", gap:5 }}>
+                          <button onClick={() => { applyPreset(saved.presetId, saved.adj); showToast(`Applying "${saved.name}"`); }} style={{ fontFamily:"monospace", fontSize:"0.52rem", color:saved.color, background:`${saved.color}12`, border:`1px solid ${saved.color}30`, borderRadius:5, padding:"3px 7px", cursor:"pointer" }}>APPLY</button>
+                          <button onClick={() => { setSavedPresets(prev => { const updated=prev.filter(p=>p.id!==saved.id); try{localStorage.setItem('lumina_presets',JSON.stringify(updated));}catch{} return updated; }); showToast("Deleted"); }} style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#444455", background:"transparent", border:"1px solid rgba(255,255,255,0.07)", borderRadius:5, padding:"3px 7px", cursor:"pointer" }}>DEL</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ══ EXIF FRAME TAB ═══════════════════════════════════════════════ */}
+          {activeFeature === "frame" && (
+            <div style={{ margin:"12px 14px 0", animation:"fadeUp 0.3s ease" }}>
+              {!imageSrc ? (
+                <div style={{ textAlign:"center", padding:"32px 20px", border:"1px dashed rgba(255,255,255,0.07)", borderRadius:12, color:"#444455" }}>
+                  <div style={{ fontSize:"2rem", marginBottom:10 }}>🖼️</div>
+                  <div style={{ fontFamily:"monospace", fontSize:"0.62rem", letterSpacing:"0.15em", marginBottom:6 }}>UPLOAD A PHOTO FIRST</div>
+                  <div style={{ fontSize:"0.7rem", color:"#333344", lineHeight:1.6 }}>Upload a photo above to extract<br/>EXIF data and add a frame.</div>
+                </div>
+              ) : (
+                <>
+                  {/* EXIF Metadata Card */}
+                  <div style={{ background:"#111116", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"12px", marginBottom:10 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:9 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c8f060" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.58rem", letterSpacing:"0.16em", color:"#c8f060", textTransform:"uppercase" }}>Detected EXIF</span>
+                      {exifBrand && <span style={{ fontFamily:"monospace", fontSize:"0.54rem", color:exifBrand.color, background:`${exifBrand.color}18`, border:`1px solid ${exifBrand.color}40`, borderRadius:4, padding:"1px 7px" }}>{exifBrand.display}</span>}
+                    </div>
+                    {exif && (exif.make || exif.model) ? (
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+                        {[
+                          { label:"Camera",       value:`${exifModel} ${exifBrand?.display||""}`.trim()||"—" },
+                          { label:"Focal Length", value:exif.focalLength?fmtFL(exif.focalLength):"—" },
+                          { label:"Aperture",     value:exif.fNumber?fmtF(exif.fNumber):"—" },
+                          { label:"Shutter",      value:exif.exposureTime?fmtExposure(exif.exposureTime):"—" },
+                          { label:"ISO",          value:exif.iso?`ISO ${exif.iso}`:"—" },
+                          { label:"Date",         value:exif.dateTimeOriginal?exif.dateTimeOriginal.slice(0,10).replace(/:/g,"-"):"—" },
+                        ].map(({label,value}) => (
+                          <div key={label} style={{ background:"#1a1a22", borderRadius:7, padding:"7px 9px" }}>
+                            <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#444455", letterSpacing:"0.12em", marginBottom:2 }}>{label.toUpperCase()}</div>
+                            <div style={{ fontSize:"0.74rem", color:"#e8e8f0", fontWeight:500 }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign:"center", padding:"10px 0", color:"#444455" }}>
+                        <div style={{ fontFamily:"monospace", fontSize:"0.6rem", letterSpacing:"0.12em", marginBottom:3 }}>NO EXIF DATA FOUND</div>
+                        <div style={{ fontSize:"0.68rem", color:"#333344", lineHeight:1.6 }}>Try an original JPG direct from your camera.</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Frame Theme */}
+                  <div style={{ background:"#111116", border:"1px solid rgba(255,255,255,0.07)", borderRadius:12, padding:"12px", marginBottom:10 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c8f060" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.58rem", letterSpacing:"0.16em", color:"#c8f060", textTransform:"uppercase" }}>Frame Theme</span>
+                    </div>
+                    {/* Theme buttons */}
+                    <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                      {[["white","☀️ White"],["black","🌑 Black"],["minimal","▭ Minimal"]].map(([theme,label]) => (
+                        <button key={theme} onClick={() => setFrameTheme(theme)}
+                          style={{ flex:1, padding:"8px 4px", borderRadius:8, border:`1px solid ${frameTheme===theme?"#c8f060":"rgba(255,255,255,0.07)"}`, background:frameTheme===theme?"rgba(192,240,96,0.08)":"transparent", color:frameTheme===theme?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.54rem", letterSpacing:"0.06em", cursor:"pointer", transition:"all 0.2s" }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Minimal sub-options */}
+                    {frameTheme === "minimal" && (
+                      <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                        {[["white","Light strip"],["black","Dark strip"]].map(([col,label]) => (
+                          <button key={col} onClick={() => setMinimalColor(col)}
+                            style={{ flex:1, padding:"6px 4px", borderRadius:7, border:`1px solid ${minimalColor===col?"rgba(192,240,96,0.5)":"rgba(255,255,255,0.05)"}`, background:minimalColor===col?"rgba(192,240,96,0.06)":"transparent", color:minimalColor===col?"#c8f060":"#444455", fontFamily:"monospace", fontSize:"0.5rem", letterSpacing:"0.06em", cursor:"pointer" }}>
+                            {col==="white"?"☀️":"🌑"} {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* Toggles */}
+                    <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+                      {[["showLogo",showLogo,setShowLogo,"Logo"],["showModel",showModel,setShowModel,"Model"],["showMeta",showMeta,setShowMeta,"Metadata"]].map(([key,val,setter,label]) => (
+                        <button key={key} onClick={() => setter(v => !v)}
+                          style={{ flex:1, padding:"7px 4px", borderRadius:7, border:`1px solid ${val?"rgba(192,240,96,0.4)":"rgba(255,255,255,0.07)"}`, background:val?"rgba(192,240,96,0.08)":"transparent", color:val?"#c8f060":"#444455", fontFamily:"monospace", fontSize:"0.52rem", letterSpacing:"0.06em", cursor:"pointer", transition:"all 0.2s" }}>
+                          {val ? "✓" : "○"} {label}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Custom logo upload */}
+                    {showLogo && (
+                      <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                        <input ref={logoFileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => { setCustomLogoSrc(ev.target.result); showToast("✓ Custom logo set"); };
+                          reader.readAsDataURL(file);
+                          e.target.value = '';
+                        }} />
+                        <button onClick={() => logoFileRef.current?.click()}
+                          style={{ flex:1, padding:"7px", borderRadius:7, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:"#555566", fontFamily:"monospace", fontSize:"0.52rem", letterSpacing:"0.08em", cursor:"pointer" }}>
+                          📷 Upload Brand Logo
+                        </button>
+                        {customLogoSrc && (
+                          <button onClick={() => { setCustomLogoSrc(null); showToast("Logo removed"); }}
+                            style={{ padding:"7px 10px", borderRadius:7, border:"1px solid rgba(255,100,100,0.2)", background:"transparent", color:"#f06060", fontFamily:"monospace", fontSize:"0.52rem", cursor:"pointer" }}>✕</button>
+                        )}
+                      </div>
+                    )}
+                    {/* Manual edit toggle */}
+                    <button onClick={() => setShowManualEdit(v => !v)}
+                      style={{ width:"100%", padding:"7px", borderRadius:7, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:showManualEdit?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.52rem", letterSpacing:"0.08em", cursor:"pointer", marginBottom:8 }}>
+                      {showManualEdit ? "▲" : "▼"} Edit Camera Info Manually
+                    </button>
+                    {showManualEdit && (
+                      <div style={{ marginBottom:10, display:"flex", flexDirection:"column", gap:6 }}>
+                        <div>
+                          <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.1em", marginBottom:3 }}>CAMERA MODEL</div>
+                          <input type="text" value={manualModel} onChange={e => setManualModel(e.target.value)}
+                            placeholder={exif?.model || "e.g. Leica Q3"}
+                            style={{ width:"100%", background:"#0a0a0c", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, padding:"7px 10px", color:"#e8e8f0", fontFamily:"'DM Sans',sans-serif", fontSize:"0.72rem", outline:"none" }} />
+                        </div>
+                        <div>
+                          <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.1em", marginBottom:3 }}>METADATA</div>
+                          <input type="text" value={manualMeta} onChange={e => setManualMeta(e.target.value)}
+                            placeholder={[exif?.fNumber?fmtF(exif.fNumber):null,exif?.exposureTime?fmtExposure(exif.exposureTime):null,exif?.iso?`ISO${exif.iso}`:null].filter(Boolean).join("  ") || "e.g. f/1.7  1/500s  ISO160"}
+                            style={{ width:"100%", background:"#0a0a0c", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, padding:"7px 10px", color:"#e8e8f0", fontFamily:"'DM Sans',sans-serif", fontSize:"0.72rem", outline:"none" }} />
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ fontSize:"0.58rem", fontFamily:"monospace", color:"#444455", letterSpacing:"0.14em", marginBottom:8 }}>PREVIEW</div>
+                    <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} showLogo={showLogo} showModel={showModel} showMeta={showMeta} minimalColor={minimalColor} customLogoSrc={customLogoSrc} manualModel={manualModel} manualMeta={manualMeta} />
+                  </div>
+
+                  {/* Download */}
+                  <button onClick={() => downloadFramed(showLogo, showModel, showMeta, frameTheme, minimalColor)}
+                    style={{ width:"100%", padding:"13px", borderRadius:10, border:"1px solid rgba(192,240,96,0.3)", background:"rgba(192,240,96,0.06)", color:"#c8f060", fontFamily:"monospace", fontSize:"0.63rem", letterSpacing:"0.14em", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    DOWNLOAD FRAMED PHOTO
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Privacy */}
+          <div style={{ margin:"14px 14px 0", padding:"8px 12px", background:"rgba(192,240,96,0.02)", border:"1px solid rgba(192,240,96,0.07)", borderRadius:10, display:"flex", gap:6, alignItems:"flex-start" }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c8f060" strokeWidth="2" style={{ flexShrink:0, marginTop:2, opacity:0.4 }}>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span style={{ fontSize:"0.63rem", color:"#444455", lineHeight:1.6 }}>Photos never stored. Cleared when you close the tab.</span>
+          </div>
+
+          {/* Footer */}
+          <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.03</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
+            </div>
+            <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>
+          </div>
+
+        </div>{/* end scrollable */}
+
+        {/* FIX 1: Sticky preset bar INSIDE the flex column, always at bottom */}
+        {activeFeature === "enhance" && (
+          <div style={{ background:"rgba(10,10,12,0.97)", borderTop:"1px solid rgba(255,255,255,0.08)", backdropFilter:"blur(16px)", flexShrink:0, position:"sticky", bottom:0, zIndex:50 }}>
+            <div style={{ padding:"7px 14px 3px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", letterSpacing:"0.18em", color:"#333344", textTransform:"uppercase" }}>
+                {activePreset ? "TAP TO SWITCH STYLE" : "STYLE PRESETS — SWIPE →"}
+              </span>
+              {activePreset && <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:preset?.color }}>{preset?.emoji} {activePreset}</span>}
+            </div>
+            <div style={{ display:"flex", gap:7, padding:"3px 14px 10px", overflowX:"auto", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
+              {PRESETS.map(p => (
+                <div key={p.id}
+                  onClick={() => { if (!imageSrc) { fileRef.current?.click(); } else { applyPreset(p.id); } }}
+                  style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:3, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
+                  <div style={{ width:42, height:42, borderRadius:11, border:`1.5px solid ${activePreset===p.id?p.color:"rgba(255,255,255,0.08)"}`, background:activePreset===p.id?`${p.color}18`:"#111116", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.2rem", transition:"all 0.2s", boxShadow:activePreset===p.id?`0 0 10px ${p.color}40`:"none" }}>
+                    {p.emoji}
+                  </div>
+                  <span style={{ fontFamily:"monospace", fontSize:"0.5rem", color:activePreset===p.id?p.color:"#444455", letterSpacing:"0.04em", textAlign:"center", maxWidth:42, lineHeight:1.2 }}>
+                    {p.id}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </>
+  );
+}  const applyPreset = (presetId, customAdj = null) => {
+    if (!imageSrc) return;
+    const p = PRESETS.find(pr => pr.id === presetId);
+    if (!p) return;
+    setActivePreset(presetId);
+    setAdj(customAdj || DEFAULT_ADJ);
+    setResultInfo({ preset:p, desc:p.fallbackDesc, adj:p.fallbackAdj });
+    setShowAdj(true);
+  };
+
+  

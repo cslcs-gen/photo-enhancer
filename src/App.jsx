@@ -86,7 +86,6 @@ function getBrand(make) {
   if (m.includes("SONY"))       return { name:"SONY",       display:"SONY",       color:"#000000", abbr:"S",  shape:"square" };
   if (m.includes("CANON"))      return { name:"CANON",      display:"CANON",      color:"#CC0000", abbr:"C",  shape:"square" };
   if (m.includes("NIKON"))      return { name:"NIKON",      display:"NIKON",      color:"#1a1a1a", abbr:"N",  shape:"square" };
-  if (m.includes("FUJI"))       return { name:"FUJIFILM",   display:"FUJIFILM",   color:"#CC0000", abbr:"F",  shape:"square" };
   if (m.includes("APPLE"))      return { name:"APPLE",      display:"iPhone",     color:"#555555", abbr:"",   shape:"square" };
   if (m.includes("SAMSUNG"))    return { name:"SAMSUNG",    display:"SAMSUNG",    color:"#1428A0", abbr:"S",  shape:"square" };
   if (m.includes("LEICA"))      return { name:"LEICA",      display:"LEICA",      color:"#CC0000", abbr:"L",  shape:"circle" };
@@ -125,12 +124,6 @@ function BrandLogo({ brand, size = 44, isWhite }) {
     SONY: () => (
       <div style={{ width:size, height:size, borderRadius:Math.round(size*0.16), background:bg, border, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
         <span style={{ fontFamily:"'DM Sans',Arial,sans-serif", fontWeight:700, fontSize:Math.round(size*0.28), color:isWhite?"#000":"#fff", letterSpacing:"0.05em" }}>SONY</span>
-      </div>
-    ),
-    FUJIFILM: () => (
-      <div style={{ width:size, height:size, borderRadius:Math.round(size*0.16), background:bg, border, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-        <span style={{ fontFamily:"'DM Sans',Arial,sans-serif", fontWeight:700, fontSize:Math.round(size*0.19), color:"#CC0000", letterSpacing:"0.02em", textAlign:"center" }}>FUJI{"
-"}FILM</span>
       </div>
     ),
     OLYMPUS: () => (
@@ -238,11 +231,11 @@ const SliderRow = ({ label, value, min, max, onChange, color }) => (
 );
 
 // ─── EXIF Frame Preview — matches reference image exactly ─────────────────────
-const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo=true, showModel=true, showMeta=true, minimalColor="white" }) => {
+const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo=true, showModel=true, showMeta=true, minimalColor="white", customLogoSrc=null, manualModel="", manualMeta="" }) => {
   const brand    = exif ? getBrand(exif.make) : null;
   const rawModel = exif?.model || "";
   const make     = exif?.make  || "";
-  const model    = rawModel.replace(make,"").trim() || rawModel;
+  const model    = manualModel || rawModel.replace(make,"").trim() || rawModel;
   const isWhite  = frameTheme === "white";
   const isMinimal = frameTheme === "minimal";
   const minimalDark = isMinimal && minimalColor === "black";
@@ -251,12 +244,17 @@ const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo
   const textSub  = isMinimal && minimalDark ? "#777777" : "#999999";
   const hasInfo  = showLogo || showModel || showMeta;
 
-  const metaParts = [
+  const metaParts = manualMeta ? [manualMeta] : [
     exif?.focalLength  ? fmtFL(exif.focalLength)       : null,
     exif?.fNumber      ? fmtF(exif.fNumber)             : null,
     exif?.exposureTime ? fmtExposure(exif.exposureTime) : null,
     exif?.iso          ? `ISO${exif.iso}`               : null,
   ].filter(Boolean);
+
+  // Custom logo renderer
+  const LogoEl = () => customLogoSrc
+    ? <img src={customLogoSrc} alt="logo" style={{ width:isMinimal?36:44, height:isMinimal?36:44, objectFit:"contain", flexShrink:0 }} />
+    : brand ? <BrandLogo brand={brand} size={isMinimal?36:44} isWhite={isMinimal?!minimalDark:isWhite} /> : null;
 
   // Minimal: no side padding, photo edge-to-edge, thin bottom strip only
   if (isMinimal) {
@@ -268,7 +266,7 @@ const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo
         </div>
         {hasInfo && (
           <div style={{ padding:"8px 12px", display:"flex", alignItems:"center", gap:10, background:bg, borderTop:`1px solid ${minimalDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)"}` }}>
-            {showLogo && brand && <BrandLogo brand={brand} size={36} isWhite={!minimalDark} />}
+            {showLogo && <LogoEl />}
             <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
               {showModel && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display || "Unknown"}</div>}
               {showMeta && metaParts.length > 0 && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", color:textSub, letterSpacing:"0.02em", lineHeight:1.3 }}>{metaParts.join("  ")}</div>}
@@ -290,7 +288,7 @@ const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo
       </div>
       {hasInfo && (
         <div style={{ padding:"10px 14px", display:"flex", alignItems:"center", gap:12, background:bg }}>
-          {showLogo && brand && <BrandLogo brand={brand} size={44} isWhite={isWhite} />}
+          {showLogo && <LogoEl />}
           <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
             {showModel && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display || "Unknown"}</div>}
             {showMeta && metaParts.length > 0 && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:400, color:textSub, letterSpacing:"0.02em", lineHeight:1.3 }}>{metaParts.join("  ")}</div>}
@@ -323,7 +321,12 @@ export default function LuminaV4() {
   const [showModel, setShowModel]         = useState(true);
   const [showMeta, setShowMeta]           = useState(true);
   const [minimalColor, setMinimalColor]   = useState("white");
+  const [customLogoSrc, setCustomLogoSrc] = useState(null);
+  const [manualModel, setManualModel]     = useState("");
+  const [manualMeta, setManualMeta]       = useState("");
+  const [showManualEdit, setShowManualEdit] = useState(false);
   const presetFileRef                     = useRef(null);
+  const logoFileRef                       = useRef(null);
   const fileRef = useRef(null);
   const ivRef   = useRef(null);
 
@@ -805,8 +808,50 @@ export default function LuminaV4() {
                         </button>
                       ))}
                     </div>
+                    {/* Custom logo upload */}
+                    {showLogo && (
+                      <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                        <input ref={logoFileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => { setCustomLogoSrc(ev.target.result); showToast("✓ Custom logo set"); };
+                          reader.readAsDataURL(file);
+                          e.target.value = '';
+                        }} />
+                        <button onClick={() => logoFileRef.current?.click()}
+                          style={{ flex:1, padding:"7px", borderRadius:7, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:"#555566", fontFamily:"monospace", fontSize:"0.52rem", letterSpacing:"0.08em", cursor:"pointer" }}>
+                          📷 Upload Brand Logo
+                        </button>
+                        {customLogoSrc && (
+                          <button onClick={() => { setCustomLogoSrc(null); showToast("Logo removed"); }}
+                            style={{ padding:"7px 10px", borderRadius:7, border:"1px solid rgba(255,100,100,0.2)", background:"transparent", color:"#f06060", fontFamily:"monospace", fontSize:"0.52rem", cursor:"pointer" }}>✕</button>
+                        )}
+                      </div>
+                    )}
+                    {/* Manual edit toggle */}
+                    <button onClick={() => setShowManualEdit(v => !v)}
+                      style={{ width:"100%", padding:"7px", borderRadius:7, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:showManualEdit?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.52rem", letterSpacing:"0.08em", cursor:"pointer", marginBottom:8 }}>
+                      {showManualEdit ? "▲" : "▼"} Edit Camera Info Manually
+                    </button>
+                    {showManualEdit && (
+                      <div style={{ marginBottom:10, display:"flex", flexDirection:"column", gap:6 }}>
+                        <div>
+                          <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.1em", marginBottom:3 }}>CAMERA MODEL</div>
+                          <input type="text" value={manualModel} onChange={e => setManualModel(e.target.value)}
+                            placeholder={exif?.model || "e.g. Leica Q3"}
+                            style={{ width:"100%", background:"#0a0a0c", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, padding:"7px 10px", color:"#e8e8f0", fontFamily:"'DM Sans',sans-serif", fontSize:"0.72rem", outline:"none" }} />
+                        </div>
+                        <div>
+                          <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.1em", marginBottom:3 }}>METADATA</div>
+                          <input type="text" value={manualMeta} onChange={e => setManualMeta(e.target.value)}
+                            placeholder={[exif?.fNumber?fmtF(exif.fNumber):null,exif?.exposureTime?fmtExposure(exif.exposureTime):null,exif?.iso?`ISO${exif.iso}`:null].filter(Boolean).join("  ") || "e.g. f/1.7  1/500s  ISO160"}
+                            style={{ width:"100%", background:"#0a0a0c", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, padding:"7px 10px", color:"#e8e8f0", fontFamily:"'DM Sans',sans-serif", fontSize:"0.72rem", outline:"none" }} />
+                        </div>
+                      </div>
+                    )}
                     <div style={{ fontSize:"0.58rem", fontFamily:"monospace", color:"#444455", letterSpacing:"0.14em", marginBottom:8 }}>PREVIEW</div>
-                    <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} showLogo={showLogo} showModel={showModel} showMeta={showMeta} minimalColor={minimalColor} />
+                    <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} showLogo={showLogo} showModel={showModel} showMeta={showMeta} minimalColor={minimalColor} customLogoSrc={customLogoSrc} manualModel={manualModel} manualMeta={manualMeta} />
                   </div>
 
                   {/* Download */}

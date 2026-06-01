@@ -238,16 +238,17 @@ const SliderRow = ({ label, value, min, max, onChange, color }) => (
 );
 
 // ─── EXIF Frame Preview — matches reference image exactly ─────────────────────
-const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo=true, showModel=true, showMeta=true }) => {
+const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo=true, showModel=true, showMeta=true, minimalColor="white" }) => {
   const brand    = exif ? getBrand(exif.make) : null;
   const rawModel = exif?.model || "";
   const make     = exif?.make  || "";
   const model    = rawModel.replace(make,"").trim() || rawModel;
   const isWhite  = frameTheme === "white";
   const isMinimal = frameTheme === "minimal";
-  const bg       = isWhite ? "#FFFFFF" : isMinimal ? "#FFFFFF" : "#0f0f0f";
-  const textMain = (isWhite||isMinimal) ? "#222222" : "#dddddd";
-  const textSub  = "#999999";
+  const minimalDark = isMinimal && minimalColor === "black";
+  const bg       = isWhite ? "#FFFFFF" : isMinimal ? (minimalDark ? "#0f0f0f" : "#FFFFFF") : "#0f0f0f";
+  const textMain = (isWhite || (isMinimal && !minimalDark)) ? "#222222" : "#dddddd";
+  const textSub  = isMinimal && minimalDark ? "#777777" : "#999999";
   const hasInfo  = showLogo || showModel || showMeta;
 
   const metaParts = [
@@ -260,14 +261,14 @@ const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo
   // Minimal: no side padding, photo edge-to-edge, thin bottom strip only
   if (isMinimal) {
     return (
-      <div style={{ background:bg, borderRadius:10, overflow:"hidden", boxShadow:"0 4px 24px rgba(0,0,0,0.15)" }}>
+      <div style={{ background:bg, borderRadius:10, overflow:"hidden", boxShadow:minimalDark?"0 4px 24px rgba(0,0,0,0.6)":"0 4px 24px rgba(0,0,0,0.15)" }}>
         <div style={{ position:"relative", overflow:"hidden" }}>
           <img src={imageSrc} alt="frame-preview" style={{ width:"100%", display:"block", filter:cssFilter, transition:"filter 0.5s ease" }} />
           <div style={{ position:"absolute", inset:0, background:overlay, pointerEvents:"none" }} />
         </div>
         {hasInfo && (
-          <div style={{ padding:"8px 12px", display:"flex", alignItems:"center", gap:10, background:bg, borderTop:"1px solid rgba(0,0,0,0.06)" }}>
-            {showLogo && brand && <BrandLogo brand={brand} size={36} isWhite={true} />}
+          <div style={{ padding:"8px 12px", display:"flex", alignItems:"center", gap:10, background:bg, borderTop:`1px solid ${minimalDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)"}` }}>
+            {showLogo && brand && <BrandLogo brand={brand} size={36} isWhite={!minimalDark} />}
             <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
               {showModel && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display || "Unknown"}</div>}
               {showMeta && metaParts.length > 0 && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", color:textSub, letterSpacing:"0.02em", lineHeight:1.3 }}>{metaParts.join("  ")}</div>}
@@ -321,6 +322,8 @@ export default function LuminaV4() {
   const [showLogo, setShowLogo]           = useState(true);
   const [showModel, setShowModel]         = useState(true);
   const [showMeta, setShowMeta]           = useState(true);
+  const [minimalColor, setMinimalColor]   = useState("white");
+  const presetFileRef                     = useRef(null);
   const fileRef = useRef(null);
   const ivRef   = useRef(null);
 
@@ -396,19 +399,20 @@ export default function LuminaV4() {
     showToast("📥 Photo saved!");
   };
 
-  const downloadFramed = (showLogo=true, showModel=true, showMeta=true) => {
+  const downloadFramed = (showLogo=true, showModel=true, showMeta=true, theme=frameTheme, minColor=minimalColor) => {
     const img = document.querySelector("img[alt='main-photo']");
     if (!img) { showToast("Upload a photo first"); return; }
     const brand    = exif ? getBrand(exif.make) : null;
     const rawModel = exif?.model || "";
     const model    = rawModel.replace(exif?.make||"","").trim() || rawModel;
-    const isWhite  = frameTheme === "white";
+    const isMinimal = theme === "minimal";
+    const isWhite  = theme === "white" || (isMinimal && minColor === "white");
     const bg       = isWhite ? "#FFFFFF" : "#0f0f0f";
     const textMain = isWhite ? "#222222" : "#dddddd";
     const textSub  = "#999999";
     const W        = img.naturalWidth;
     const H        = img.naturalHeight;
-    const pad      = Math.round(W * 0.055);
+    const pad      = isMinimal ? 0 : Math.round(W * 0.055);
     const logoSize = Math.round(W * 0.065);
     const infoH    = Math.round(logoSize * 1.8);
     const canvas   = document.createElement("canvas");
@@ -533,7 +537,7 @@ export default function LuminaV4() {
             <div style={{ fontSize:"0.54rem", color:"#444455", letterSpacing:"0.2em", fontFamily:"monospace", marginTop:2 }}>AI PHOTO ENHANCER</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.01</div>
+            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.02</div>
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.14)", borderRadius:100, padding:"4px 9px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:"#c8f060", animation:"glow 2s infinite" }} />
               <span style={{ fontSize:"0.54rem", color:"#c8f060", fontFamily:"monospace", letterSpacing:"0.1em" }}>LIVE</span>
@@ -652,11 +656,52 @@ export default function LuminaV4() {
                 </div>
               )}
 
+              {/* Preset import */}
+              <div style={{ margin:"10px 14px 0" }}>
+                <input ref={presetFileRef} type="file" accept=".json" style={{ display:"none" }} onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    try {
+                      const imported = JSON.parse(ev.target.result);
+                      const presets = Array.isArray(imported) ? imported : [imported];
+                      const valid = presets.filter(p => p.presetId && p.adj && p.name);
+                      if (valid.length === 0) { showToast("❌ Invalid preset file"); return; }
+                      setSavedPresets(prev => {
+                        const updated = [...valid.map(p => ({ ...p, id:Date.now()+Math.random() })), ...prev];
+                        try { localStorage.setItem('lumina_presets', JSON.stringify(updated)); } catch {}
+                        return updated;
+                      });
+                      showToast(`✓ Imported ${valid.length} preset(s)`);
+                    } catch { showToast("❌ Could not read file"); }
+                  };
+                  reader.readAsText(file);
+                  e.target.value = '';
+                }} />
+                <button onClick={() => presetFileRef.current?.click()}
+                  style={{ width:"100%", padding:"9px", borderRadius:8, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:"#555566", fontFamily:"monospace", fontSize:"0.56rem", letterSpacing:"0.12em", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  IMPORT PRESET FILE (.json)
+                </button>
+              </div>
+
               {savedPresets.length > 0 && (
                 <div style={{ margin:"14px 14px 0" }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
-                    <div style={{ width:4, height:4, borderRadius:"50%", background:"#c8f060" }} />
-                    <span style={{ fontFamily:"monospace", fontSize:"0.56rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"#444455" }}>Saved Presets ({savedPresets.length})</span>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      <div style={{ width:4, height:4, borderRadius:"50%", background:"#c8f060" }} />
+                      <span style={{ fontFamily:"monospace", fontSize:"0.56rem", letterSpacing:"0.2em", textTransform:"uppercase", color:"#444455" }}>Saved Presets ({savedPresets.length})</span>
+                    </div>
+                    <button onClick={() => {
+                      const data = JSON.stringify(savedPresets, null, 2);
+                      const blob = new Blob([data], {type:"application/json"});
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = "lumina-presets.json"; a.click();
+                      URL.revokeObjectURL(url);
+                      showToast("✓ Presets exported");
+                    }} style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", background:"transparent", border:"1px solid rgba(255,255,255,0.07)", borderRadius:5, padding:"3px 7px", cursor:"pointer" }}>EXPORT</button>
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                     {savedPresets.map(saved => (
@@ -732,7 +777,7 @@ export default function LuminaV4() {
                       <span style={{ fontFamily:"monospace", fontSize:"0.58rem", letterSpacing:"0.16em", color:"#c8f060", textTransform:"uppercase" }}>Frame Theme</span>
                     </div>
                     {/* Theme buttons */}
-                    <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+                    <div style={{ display:"flex", gap:6, marginBottom:8 }}>
                       {[["white","☀️ White"],["black","🌑 Black"],["minimal","▭ Minimal"]].map(([theme,label]) => (
                         <button key={theme} onClick={() => setFrameTheme(theme)}
                           style={{ flex:1, padding:"8px 4px", borderRadius:8, border:`1px solid ${frameTheme===theme?"#c8f060":"rgba(255,255,255,0.07)"}`, background:frameTheme===theme?"rgba(192,240,96,0.08)":"transparent", color:frameTheme===theme?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.54rem", letterSpacing:"0.06em", cursor:"pointer", transition:"all 0.2s" }}>
@@ -740,6 +785,17 @@ export default function LuminaV4() {
                         </button>
                       ))}
                     </div>
+                    {/* Minimal sub-options */}
+                    {frameTheme === "minimal" && (
+                      <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                        {[["white","Light strip"],["black","Dark strip"]].map(([col,label]) => (
+                          <button key={col} onClick={() => setMinimalColor(col)}
+                            style={{ flex:1, padding:"6px 4px", borderRadius:7, border:`1px solid ${minimalColor===col?"rgba(192,240,96,0.5)":"rgba(255,255,255,0.05)"}`, background:minimalColor===col?"rgba(192,240,96,0.06)":"transparent", color:minimalColor===col?"#c8f060":"#444455", fontFamily:"monospace", fontSize:"0.5rem", letterSpacing:"0.06em", cursor:"pointer" }}>
+                            {col==="white"?"☀️":"🌑"} {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {/* Toggles */}
                     <div style={{ display:"flex", gap:6, marginBottom:12 }}>
                       {[["showLogo",showLogo,setShowLogo,"Logo"],["showModel",showModel,setShowModel,"Model"],["showMeta",showMeta,setShowMeta,"Metadata"]].map(([key,val,setter,label]) => (
@@ -750,11 +806,11 @@ export default function LuminaV4() {
                       ))}
                     </div>
                     <div style={{ fontSize:"0.58rem", fontFamily:"monospace", color:"#444455", letterSpacing:"0.14em", marginBottom:8 }}>PREVIEW</div>
-                    <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} showLogo={showLogo} showModel={showModel} showMeta={showMeta} />
+                    <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} showLogo={showLogo} showModel={showModel} showMeta={showMeta} minimalColor={minimalColor} />
                   </div>
 
                   {/* Download */}
-                  <button onClick={() => downloadFramed(showLogo, showModel, showMeta)}
+                  <button onClick={() => downloadFramed(showLogo, showModel, showMeta, frameTheme, minimalColor)}
                     style={{ width:"100%", padding:"13px", borderRadius:10, border:"1px solid rgba(192,240,96,0.3)", background:"rgba(192,240,96,0.06)", color:"#c8f060", fontFamily:"monospace", fontSize:"0.63rem", letterSpacing:"0.14em", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     DOWNLOAD FRAMED PHOTO
@@ -776,7 +832,7 @@ export default function LuminaV4() {
           <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.01</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.02</span>
               <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
             </div>
             <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>

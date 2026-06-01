@@ -107,11 +107,10 @@ function BrandLogo({ brand, size = 44, isWhite }) {
 
   const logos = {
     LEICA: () => (
-      <div style={{ width:size, height:size, borderRadius:"50%", background:"#E30613", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-        <svg viewBox="0 0 200 200" width={size} height={size}>
-          <text x="100" y="118" textAnchor="middle" fontFamily="Garamond,Georgia,serif" fontStyle="italic" fontWeight="300" fontSize="52" fill="#FFFFFF">Leica</text>
-        </svg>
-      </div>
+      <svg viewBox="0 0 200 200" width={size} height={size} style={{ flexShrink:0 }}>
+        <path d="M99.9956 200C155.223 200 200 155.232 200 100.022C200 44.7855 155.223 1.52588e-05 99.9956 1.52588e-05C44.759 1.52588e-05 0 44.7855 0 100.022C0 155.232 44.759 200 99.9956 200Z" fill="#E20612"/>
+        <path d="M67.6897 55.3426C48.8248 54.6106 43.7183 81.4131 42.5541 85.9904C42.4924 86.3167 42.3336 86.4314 42.3336 86.4314C36.5127 85.6376 33.2936 84.447 33.2936 84.447L31.9707 88.1953C35.8954 90.0562 41.6721 90.6206 41.6721 90.6206C40.5432 97.8262 34.837 111.346 34.837 111.346C34.837 111.346 29.7746 109.803 23.3717 109.803C15.046 109.803 12.118 113.719 11.9063 116.197C11.3595 122.618 19.4999 125.678 25.1356 125.678C36.1335 125.678 41.8926 119.725 41.8926 119.725C41.8926 119.725 72.6815 131.411 104.952 131.411C147.189 131.411 182.784 120.166 182.784 120.166L181.682 116.197C181.682 116.197 155.885 125.184 106.496 124.576C72.4258 124.161 46.3024 114.213 46.3024 114.213C46.3024 114.213 47.2902 112.449 47.8458 111.346C51.2589 104.388 55.3424 90.4001 55.3424 90.4001C55.3424 90.4001 78.7141 83.8561 78.7141 65.2645C78.7141 59.3819 73.0961 55.5807 67.6897 55.3426ZM68.5716 60.6343C72.1965 60.6343 73.5018 63.5006 73.2019 66.1465C71.438 81.6776 56.0038 85.3289 56.0038 85.3289C56.0038 85.3289 59.7345 60.6343 68.5716 60.6343ZM106.055 73.4226C102.13 73.4226 99.4399 75.0366 99.4399 78.7143C99.4399 82.4361 102.58 83.3445 106.055 83.3445C109.538 83.3445 112.89 81.8452 112.89 78.0528C112.89 74.2516 108.894 73.4226 106.055 73.4226ZM158.31 86.8723C147.039 86.8723 140.936 96.5914 140.671 102.306C140.618 103.55 140.451 103.629 140.451 103.629C140.186 103.929 136.305 108.48 131.411 108.48C127.495 108.48 126.78 105.287 126.78 103.188C126.78 100.913 128.721 91.9436 134.057 91.9436C136.958 91.9436 138.687 94.3689 138.687 94.3689L140.23 89.2977C140.23 89.2977 137.796 87.331 132.734 87.3133C121.833 87.3045 114.477 95.3743 114.213 102.747C114.16 103.85 113.974 104.22 113.992 104.291C113.631 104.732 111.082 107.819 107.598 107.819C105.217 107.819 105.173 105.993 105.173 105.173C105.173 104.053 109.803 87.9748 109.803 87.9748L97.4555 88.1953L93.2663 103.85C93.2663 103.85 86.3871 108.692 76.9502 109.362C72.0818 109.697 70.3355 106.69 70.3355 104.952C70.3356 104.229 70.3355 104.291 70.3355 104.291C70.3444 104.291 72.3817 104.511 73.8634 104.511C75.0275 104.511 89.518 103.391 89.518 94.5894C89.518 89.5535 84.4115 87.7543 78.0526 87.7543C66.2962 87.7543 57.9882 94.9775 57.9882 103.629C57.9882 111.523 64.7263 114.874 73.4224 114.874C83.2914 114.874 93.0458 108.921 93.0458 108.921C93.0458 108.921 93.6367 114.874 101.424 114.874C109.459 114.874 115.756 108.921 115.756 108.921C115.756 108.921 119.231 114.654 127.221 114.654C135.388 114.654 141.553 108.039 141.553 108.039C141.553 108.039 143.829 114.213 151.916 114.213C158.24 114.213 161.617 110.244 161.617 110.244C161.617 110.244 163.381 114.213 168.894 114.213C175.623 114.213 180.579 109.583 180.579 109.583L179.477 105.614C179.477 105.614 176.919 107.598 175.067 107.598C173.665 107.598 172.862 106.46 172.862 105.173C172.862 102.28 177.493 87.9748 177.493 87.9748L166.248 88.1953L165.807 89.9592C165.807 89.9592 164.131 86.8723 158.31 86.8723ZM78.4936 91.2821C80.1517 91.3791 81.4129 92.4992 81.3599 93.7075C81.0865 101.539 71.438 100.322 71.438 100.322C71.438 100.322 72.8579 90.9381 78.4936 91.2821ZM160.515 91.5026C162.835 91.5026 164.043 93.3459 164.043 94.8099C164.043 95.1098 162.729 108.48 156.105 108.48C153.071 108.48 153.018 105.032 153.018 104.07C153.018 101.522 155.02 91.5026 160.515 91.5026ZM21.1668 114.654C21.7427 114.596 22.2097 114.619 22.7102 114.654C27.5345 114.918 31.7502 116.638 31.7502 116.638C31.7502 116.638 26.7848 120.483 22.7102 120.607C19.5969 120.704 17.639 118.675 17.639 117.52C17.639 115.602 19.4391 114.828 21.1668 114.654Z" fill="white"/>
+      </svg>
     ),
     CANON: () => (
       <div style={{ width:size, height:size, borderRadius:Math.round(size*0.16), background:bg, border, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -130,7 +129,9 @@ function BrandLogo({ brand, size = 44, isWhite }) {
     ),
     FUJIFILM: () => (
       <div style={{ width:size, height:size, borderRadius:Math.round(size*0.16), background:bg, border, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-        <span style={{ fontFamily:"'DM Sans',Arial,sans-serif", fontWeight:700, fontSize:Math.round(size*0.19), color:"#CC0000", letterSpacing:"0.02em", textAlign:"center" }}>FUJIFILM</span></div>
+        <span style={{ fontFamily:"'DM Sans',Arial,sans-serif", fontWeight:700, fontSize:Math.round(size*0.19), color:"#CC0000", letterSpacing:"0.02em", textAlign:"center" }}>FUJI{"
+"}FILM</span>
+      </div>
     ),
     OLYMPUS: () => (
       <div style={{ width:size, height:size, borderRadius:Math.round(size*0.16), background:bg, border, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -213,6 +214,7 @@ const SLIDER_CONFIG = {
 const DEFAULT_ADJ = { contrast:0, saturation:0, brightness:0, teal:0, hue:0 };
 
 const ANIM = `
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital@1&display=swap');
 html, body, #root { height: 100%; overflow: hidden; }
 @keyframes fadeUp  { from{opacity:0;transform:translateY(8px)}  to{opacity:1;transform:translateY(0)} }
 @keyframes dot     { 0%,60%,100%{transform:translateY(0);opacity:0.3} 30%{transform:translateY(-4px);opacity:1} }
@@ -236,15 +238,17 @@ const SliderRow = ({ label, value, min, max, onChange, color }) => (
 );
 
 // ─── EXIF Frame Preview — matches reference image exactly ─────────────────────
-const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif }) => {
+const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo=true, showModel=true, showMeta=true }) => {
   const brand    = exif ? getBrand(exif.make) : null;
   const rawModel = exif?.model || "";
   const make     = exif?.make  || "";
   const model    = rawModel.replace(make,"").trim() || rawModel;
   const isWhite  = frameTheme === "white";
-  const bg       = isWhite ? "#FFFFFF" : "#0f0f0f";
-  const textMain = isWhite ? "#222222" : "#dddddd";
+  const isMinimal = frameTheme === "minimal";
+  const bg       = isWhite ? "#FFFFFF" : isMinimal ? "#FFFFFF" : "#0f0f0f";
+  const textMain = (isWhite||isMinimal) ? "#222222" : "#dddddd";
   const textSub  = "#999999";
+  const hasInfo  = showLogo || showModel || showMeta;
 
   const metaParts = [
     exif?.focalLength  ? fmtFL(exif.focalLength)       : null,
@@ -253,27 +257,45 @@ const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif }) => {
     exif?.iso          ? `ISO${exif.iso}`               : null,
   ].filter(Boolean);
 
+  // Minimal: no side padding, photo edge-to-edge, thin bottom strip only
+  if (isMinimal) {
+    return (
+      <div style={{ background:bg, borderRadius:10, overflow:"hidden", boxShadow:"0 4px 24px rgba(0,0,0,0.15)" }}>
+        <div style={{ position:"relative", overflow:"hidden" }}>
+          <img src={imageSrc} alt="frame-preview" style={{ width:"100%", display:"block", filter:cssFilter, transition:"filter 0.5s ease" }} />
+          <div style={{ position:"absolute", inset:0, background:overlay, pointerEvents:"none" }} />
+        </div>
+        {hasInfo && (
+          <div style={{ padding:"8px 12px", display:"flex", alignItems:"center", gap:10, background:bg, borderTop:"1px solid rgba(0,0,0,0.06)" }}>
+            {showLogo && brand && <BrandLogo brand={brand} size={36} isWhite={true} />}
+            <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
+              {showModel && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display || "Unknown"}</div>}
+              {showMeta && metaParts.length > 0 && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", color:textSub, letterSpacing:"0.02em", lineHeight:1.3 }}>{metaParts.join("  ")}</div>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ background:bg, borderRadius:10, overflow:"hidden", boxShadow:isWhite?"0 4px 24px rgba(0,0,0,0.1)":"0 4px 24px rgba(0,0,0,0.6)" }}>
-      {/* Photo */}
+      {/* Photo with padding for border effect */}
       <div style={{ padding:"10px 10px 0" }}>
         <div style={{ position:"relative", overflow:"hidden", borderRadius:3 }}>
           <img src={imageSrc} alt="frame-preview" style={{ width:"100%", display:"block", filter:cssFilter, transition:"filter 0.5s ease" }} />
           <div style={{ position:"absolute", inset:0, background:overlay, pointerEvents:"none" }} />
         </div>
       </div>
-      {/* Info bar: Logo | Camera Model bold / metadata left-aligned */}
-      <div style={{ padding:"10px 14px", display:"flex", alignItems:"center", gap:12, background:bg }}>
-        <BrandLogo brand={brand} size={44} isWhite={isWhite} />
-        <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
-          <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>
-            {model || brand?.display || "Unknown"}
-          </div>
-          <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:400, color:textSub, letterSpacing:"0.02em", lineHeight:1.3 }}>
-            {metaParts.join("  ") || "—"}
+      {hasInfo && (
+        <div style={{ padding:"10px 14px", display:"flex", alignItems:"center", gap:12, background:bg }}>
+          {showLogo && brand && <BrandLogo brand={brand} size={44} isWhite={isWhite} />}
+          <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
+            {showModel && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display || "Unknown"}</div>}
+            {showMeta && metaParts.length > 0 && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:400, color:textSub, letterSpacing:"0.02em", lineHeight:1.3 }}>{metaParts.join("  ")}</div>}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -289,11 +311,16 @@ export default function LuminaV4() {
   const [isDragging, setIsDragging]       = useState(false);
   const [adj, setAdj]                     = useState(DEFAULT_ADJ);
   const [showAdj, setShowAdj]             = useState(false);
-  const [savedPresets, setSavedPresets]   = useState([]);
+  const [savedPresets, setSavedPresets]   = useState(() => {
+    try { return JSON.parse(localStorage.getItem('lumina_presets') || '[]'); } catch { return []; }
+  });
   const [toast, setToast]                 = useState(null);
   const [exif, setExif]                   = useState(null);
   const [frameTheme, setFrameTheme]       = useState("white");
   const [activeFeature, setActiveFeature] = useState("enhance");
+  const [showLogo, setShowLogo]           = useState(true);
+  const [showModel, setShowModel]         = useState(true);
+  const [showMeta, setShowMeta]           = useState(true);
   const fileRef = useRef(null);
   const ivRef   = useRef(null);
 
@@ -369,7 +396,7 @@ export default function LuminaV4() {
     showToast("📥 Photo saved!");
   };
 
-  const downloadFramed = () => {
+  const downloadFramed = (showLogo=true, showModel=true, showMeta=true) => {
     const img = document.querySelector("img[alt='main-photo']");
     if (!img) { showToast("Upload a photo first"); return; }
     const brand    = exif ? getBrand(exif.make) : null;
@@ -430,32 +457,27 @@ export default function LuminaV4() {
       }
     }
 
-    // Row 1: "Brand Model" bold serif
-    const modelLine = model || brand?.display || "Unknown Camera";
-    ctx.textAlign = "left";
-    ctx.font = `bold ${mainSz}px Georgia, serif`;
-    ctx.fillStyle = textMain;
-    ctx.fillText(modelLine, textX, row1Y);
-
-    // Row 2: metadata sans-serif (exclude focal length)
-    const allMeta = [
-      exif?.fNumber      ? fmtF(exif.fNumber)             : null,
-      exif?.exposureTime ? fmtExposure(exif.exposureTime) : null,
-      exif?.iso          ? `ISO${exif.iso}`               : null,
-    ].filter(Boolean);
-    if (allMeta.length > 0) {
-      ctx.font = `${subSz}px -apple-system, Helvetica, sans-serif`;
-      ctx.fillStyle = textSub;
-      ctx.fillText(allMeta.join("   "), textX, row2Y);
-    }
-
-    // Focal length — large far right
-    const fl = exif?.focalLength ? fmtFL(exif.focalLength) : null;
-    if (fl) {
-      ctx.font = `bold ${focalSz}px Georgia, serif`;
+    // Row 1: Model
+    if (showModel) {
+      const modelLine = model || brand?.display || "Unknown Camera";
+      ctx.textAlign = "left";
+      ctx.font = `bold ${mainSz}px Georgia, serif`;
       ctx.fillStyle = textMain;
-      ctx.textAlign = "right";
-      ctx.fillText(fl, pad + W, row1Y + (row2Y - row1Y) * 0.3);
+      ctx.fillText(modelLine, showLogo ? textX : pad, row1Y);
+    }
+    // Row 2: metadata
+    if (showMeta) {
+      const allMeta = [
+        exif?.focalLength  ? fmtFL(exif.focalLength)       : null,
+        exif?.fNumber      ? fmtF(exif.fNumber)             : null,
+        exif?.exposureTime ? fmtExposure(exif.exposureTime) : null,
+        exif?.iso          ? `ISO${exif.iso}`               : null,
+      ].filter(Boolean);
+      if (allMeta.length > 0) {
+        ctx.font = `${subSz}px -apple-system, Helvetica, sans-serif`;
+        ctx.fillStyle = textSub;
+        ctx.fillText(allMeta.join("   "), showLogo ? textX : pad, row2Y);
+      }
     }
     const link = document.createElement("a");
     link.download = `lumina-framed-${Date.now()}.jpg`;
@@ -478,7 +500,11 @@ export default function LuminaV4() {
     if (!activePreset) return;
     const p = PRESETS.find(p => p.id === activePreset);
     const name = `${activePreset} #${savedPresets.length + 1}`;
-    setSavedPresets(prev => [{ id:Date.now(), name, presetId:activePreset, emoji:p.emoji, color:p.color, adj:{...adj}, createdAt:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"}) }, ...prev]);
+    setSavedPresets(prev => {
+      const updated = [{ id:Date.now(), name, presetId:activePreset, emoji:p.emoji, color:p.color, adj:{...adj}, createdAt:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short"}) }, ...prev];
+      try { localStorage.setItem('lumina_presets', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     showToast(`✓ Saved as "${name}"`);
   };
 
@@ -507,7 +533,7 @@ export default function LuminaV4() {
             <div style={{ fontSize:"0.54rem", color:"#444455", letterSpacing:"0.2em", fontFamily:"monospace", marginTop:2 }}>AI PHOTO ENHANCER</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#2a3a1a", background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.1)", borderRadius:4, padding:"2px 6px" }}>v4.02</div>
+            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.01</div>
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.14)", borderRadius:100, padding:"4px 9px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:"#c8f060", animation:"glow 2s infinite" }} />
               <span style={{ fontSize:"0.54rem", color:"#c8f060", fontFamily:"monospace", letterSpacing:"0.1em" }}>LIVE</span>
@@ -647,7 +673,7 @@ export default function LuminaV4() {
                         </div>
                         <div style={{ display:"flex", gap:5 }}>
                           <button onClick={() => { applyPreset(saved.presetId, saved.adj); showToast(`Applying "${saved.name}"`); }} style={{ fontFamily:"monospace", fontSize:"0.52rem", color:saved.color, background:`${saved.color}12`, border:`1px solid ${saved.color}30`, borderRadius:5, padding:"3px 7px", cursor:"pointer" }}>APPLY</button>
-                          <button onClick={() => { setSavedPresets(prev=>prev.filter(p=>p.id!==saved.id)); showToast("Deleted"); }} style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#444455", background:"transparent", border:"1px solid rgba(255,255,255,0.07)", borderRadius:5, padding:"3px 7px", cursor:"pointer" }}>DEL</button>
+                          <button onClick={() => { setSavedPresets(prev => { const updated=prev.filter(p=>p.id!==saved.id); try{localStorage.setItem('lumina_presets',JSON.stringify(updated));}catch{} return updated; }); showToast("Deleted"); }} style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#444455", background:"transparent", border:"1px solid rgba(255,255,255,0.07)", borderRadius:5, padding:"3px 7px", cursor:"pointer" }}>DEL</button>
                         </div>
                       </div>
                     ))}
@@ -705,21 +731,30 @@ export default function LuminaV4() {
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c8f060" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
                       <span style={{ fontFamily:"monospace", fontSize:"0.58rem", letterSpacing:"0.16em", color:"#c8f060", textTransform:"uppercase" }}>Frame Theme</span>
                     </div>
-                    <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-                      {[["white","☀️ White"],["black","🌑 Black"]].map(([theme,label]) => (
+                    {/* Theme buttons */}
+                    <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+                      {[["white","☀️ White"],["black","🌑 Black"],["minimal","▭ Minimal"]].map(([theme,label]) => (
                         <button key={theme} onClick={() => setFrameTheme(theme)}
-                          style={{ flex:1, padding:"9px", borderRadius:8, border:`1px solid ${frameTheme===theme?"#c8f060":"rgba(255,255,255,0.07)"}`, background:frameTheme===theme?"rgba(192,240,96,0.08)":"transparent", color:frameTheme===theme?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.6rem", letterSpacing:"0.1em", cursor:"pointer", transition:"all 0.2s" }}>
+                          style={{ flex:1, padding:"8px 4px", borderRadius:8, border:`1px solid ${frameTheme===theme?"#c8f060":"rgba(255,255,255,0.07)"}`, background:frameTheme===theme?"rgba(192,240,96,0.08)":"transparent", color:frameTheme===theme?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.54rem", letterSpacing:"0.06em", cursor:"pointer", transition:"all 0.2s" }}>
                           {label}
                         </button>
                       ))}
                     </div>
-                    {/* FIX 3: Live preview with brand logo */}
+                    {/* Toggles */}
+                    <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+                      {[["showLogo",showLogo,setShowLogo,"Logo"],["showModel",showModel,setShowModel,"Model"],["showMeta",showMeta,setShowMeta,"Metadata"]].map(([key,val,setter,label]) => (
+                        <button key={key} onClick={() => setter(v => !v)}
+                          style={{ flex:1, padding:"7px 4px", borderRadius:7, border:`1px solid ${val?"rgba(192,240,96,0.4)":"rgba(255,255,255,0.07)"}`, background:val?"rgba(192,240,96,0.08)":"transparent", color:val?"#c8f060":"#444455", fontFamily:"monospace", fontSize:"0.52rem", letterSpacing:"0.06em", cursor:"pointer", transition:"all 0.2s" }}>
+                          {val ? "✓" : "○"} {label}
+                        </button>
+                      ))}
+                    </div>
                     <div style={{ fontSize:"0.58rem", fontFamily:"monospace", color:"#444455", letterSpacing:"0.14em", marginBottom:8 }}>PREVIEW</div>
-                    <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} />
+                    <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} showLogo={showLogo} showModel={showModel} showMeta={showMeta} />
                   </div>
 
                   {/* Download */}
-                  <button onClick={downloadFramed}
+                  <button onClick={() => downloadFramed(showLogo, showModel, showMeta)}
                     style={{ width:"100%", padding:"13px", borderRadius:10, border:"1px solid rgba(192,240,96,0.3)", background:"rgba(192,240,96,0.06)", color:"#c8f060", fontFamily:"monospace", fontSize:"0.63rem", letterSpacing:"0.14em", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     DOWNLOAD FRAMED PHOTO
@@ -741,8 +776,8 @@ export default function LuminaV4() {
           <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#2a3a1a", background:"rgba(192,240,96,0.07)", border:"1px solid rgba(192,240,96,0.12)", borderRadius:3, padding:"1px 5px" }}>v4.02</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>May 2026</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.01</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
             </div>
             <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>
           </div>

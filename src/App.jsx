@@ -357,36 +357,15 @@ export default function LuminaV4() {
     reader.readAsDataURL(file);
   }, []);
 
-  const applyPreset = useCallback(async (presetId, customAdj = null) => {
-    if (!imageBase64 || isProcessing) return;
+  const applyPreset = useCallback((presetId, customAdj = null) => {
+    if (!imageSrc) return;
     const preset = PRESETS.find(p => p.id === presetId);
     if (!preset) return;
-    setActivePreset(presetId); setIsProcessing(true);
-    setShowAdj(false); setAdj(customAdj || DEFAULT_ADJ); setProgress(0);
-    ivRef.current = setInterval(() => setProgress(p => Math.min(p + Math.random() * 5, 88)), 150);
-    const WORKER_URL = "https://lumina-proxy.cslcs-gen.workers.dev";
-    const sys = `You are a professional photo enhancement expert. Respond ONLY with valid JSON no markdown:
-{"description":"2-3 sentence enhancement description","adjustments":["adj1","adj2","adj3","adj4","adj5"]}`;
-    try {
-      const res = await fetch(WORKER_URL, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:600, system:sys,
-          messages:[{ role:"user", content:[
-            { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:imageBase64 } },
-            { type:"text", text:`Apply "${presetId}" preset.` }
-          ]}]
-        })
-      });
-      const data = await res.json();
-      const parsed = JSON.parse(data.content.map(i=>i.text||"").join("").replace(/```json|```/g,"").trim());
-      clearInterval(ivRef.current); setProgress(100); setTimeout(()=>setProgress(0),500);
-      setResultInfo({ preset, desc:parsed.description, adj:parsed.adjustments }); setShowAdj(true);
-    } catch {
-      clearInterval(ivRef.current); setProgress(100); setTimeout(()=>setProgress(0),500);
-      setResultInfo({ preset, desc:preset.fallbackDesc, adj:preset.fallbackAdj }); setShowAdj(true);
-    }
-    setIsProcessing(false);
-  }, [imageBase64, isProcessing]);
+    setActivePreset(presetId);
+    setAdj(customAdj || DEFAULT_ADJ);
+    setResultInfo({ preset, desc:preset.fallbackDesc, adj:preset.fallbackAdj });
+    setShowAdj(true);
+  }, [imageSrc]);
 
   const downloadPhoto = () => {
     const img = document.querySelector("img[alt='main-photo']");
@@ -540,7 +519,7 @@ export default function LuminaV4() {
             <div style={{ fontSize:"0.54rem", color:"#444455", letterSpacing:"0.2em", fontFamily:"monospace", marginTop:2 }}>AI PHOTO ENHANCER</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.02</div>
+            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.03</div>
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.14)", borderRadius:100, padding:"4px 9px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:"#c8f060", animation:"glow 2s infinite" }} />
               <span style={{ fontSize:"0.54rem", color:"#c8f060", fontFamily:"monospace", letterSpacing:"0.1em" }}>LIVE</span>
@@ -877,7 +856,7 @@ export default function LuminaV4() {
           <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.02</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.03</span>
               <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
             </div>
             <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>
@@ -897,7 +876,7 @@ export default function LuminaV4() {
             <div style={{ display:"flex", gap:7, padding:"3px 14px 10px", overflowX:"auto", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }}>
               {PRESETS.map(p => (
                 <div key={p.id}
-                  onClick={() => { if (!imageBase64) { fileRef.current?.click(); } else { applyPreset(p.id); } }}
+                  onClick={() => { if (!imageSrc) { fileRef.current?.click(); } else { applyPreset(p.id); } }}
                   style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:3, cursor:"pointer", WebkitTapHighlightColor:"transparent" }}>
                   <div style={{ width:42, height:42, borderRadius:11, border:`1.5px solid ${activePreset===p.id?p.color:"rgba(255,255,255,0.08)"}`, background:activePreset===p.id?`${p.color}18`:"#111116", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.2rem", transition:"all 0.2s", boxShadow:activePreset===p.id?`0 0 10px ${p.color}40`:"none" }}>
                     {p.emoji}

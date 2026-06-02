@@ -268,7 +268,7 @@ const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo
           <div style={{ padding:"8px 12px", display:"flex", alignItems:"center", gap:10, background:bg, borderTop:`1px solid ${minimalDark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)"}` }}>
             {showLogo && <LogoEl />}
             <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
-              {showModel && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display || "Unknown"}</div>}
+              {showModel && (model || brand?.display) && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display}</div>}
               {showMeta && metaParts.length > 0 && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", color:textSub, letterSpacing:"0.02em", lineHeight:1.3 }}>{metaParts.join("  ")}</div>}
             </div>
           </div>
@@ -290,7 +290,7 @@ const FramePreview = ({ imageSrc, cssFilter, overlay, frameTheme, exif, showLogo
         <div style={{ padding:"10px 14px", display:"flex", alignItems:"center", gap:12, background:bg }}>
           {showLogo && <LogoEl />}
           <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
-            {showModel && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display || "Unknown"}</div>}
+            {showModel && (model || brand?.display) && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:700, color:textMain, letterSpacing:"0.01em", lineHeight:1.3 }}>{model || brand?.display}</div>}
             {showMeta && metaParts.length > 0 && <div style={{ fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"0.62rem", fontWeight:400, color:textSub, letterSpacing:"0.02em", lineHeight:1.3 }}>{metaParts.join("  ")}</div>}
           </div>
         </div>
@@ -329,6 +329,7 @@ export default function LuminaV4() {
   const logoFileRef                       = useRef(null);
   const fileRef = useRef(null);
   const ivRef   = useRef(null);
+  const framePreviewRef                   = useRef(null);
 
   const updateAdj = (key, val) => setAdj(prev => ({ ...prev, [key]: val }));
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
@@ -381,106 +382,40 @@ export default function LuminaV4() {
     showToast("📥 Photo saved!");
   };
 
-  const downloadFramed = (showLogo=true, showModel=true, showMeta=true, theme=frameTheme, minColor=minimalColor) => {
-    const img = document.querySelector("img[alt='main-photo']");
-    if (!img) { showToast("Upload a photo first"); return; }
-    const brand    = exif ? getBrand(exif.make) : null;
-    const rawModel = exif?.model || "";
-    const model    = rawModel.replace(exif?.make||"","").trim() || rawModel;
-    const isMinimal = theme === "minimal";
-    const isWhite  = theme === "white" || (isMinimal && minColor === "white");
-    const bg       = isWhite ? "#FFFFFF" : "#0f0f0f";
-    const textMain = isWhite ? "#222222" : "#dddddd";
-    const textSub  = "#999999";
-    const W        = img.naturalWidth;
-    const H        = img.naturalHeight;
-    const pad      = isMinimal ? 0 : Math.round(W * 0.055);
-    const logoSize = Math.round(W * 0.065);
-    const infoH    = Math.round(logoSize * 1.8);
-    const canvas   = document.createElement("canvas");
-    canvas.width   = W + pad * 2;
-    canvas.height  = H + pad * 2 + infoH;
-    const ctx = canvas.getContext("2d");
-    // Background
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Photo
-    ctx.save(); ctx.filter = img.style.filter || "none";
-    ctx.drawImage(img, pad, pad, W, H);
-    ctx.restore();
-    // Separator line
-    ctx.strokeStyle = isWhite ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(pad, H+pad*2); ctx.lineTo(W+pad, H+pad*2); ctx.stroke();
-    // Info area — matches reference layout
-    const logoX   = pad;
-    const logoY   = H + pad*2 + (infoH - logoSize) / 2;
-    const textX   = pad + logoSize + Math.round(W * 0.025);
-    const row1Y   = H + pad*2 + infoH * 0.40;
-    const row2Y   = H + pad*2 + infoH * 0.68;
-    const mainSz  = Math.max(18, Math.round(W * 0.024));
-    const subSz   = Math.max(13, Math.round(W * 0.016));
-    const focalSz = Math.max(28, Math.round(W * 0.05));
-
-    // Draw brand logo (circle for Leica, rounded rect for others)
-    if (brand) {
-      if (brand.name === "LEICA") {
-        ctx.beginPath();
-        ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI*2);
-        ctx.fillStyle = "#E30613"; ctx.fill();
-        ctx.font = `italic ${Math.round(logoSize*0.3)}px Georgia, serif`;
-        ctx.fillStyle = "#FFFFFF"; ctx.textAlign = "center";
-        ctx.fillText("Leica", logoX + logoSize/2, logoY + logoSize/2 + Math.round(logoSize*0.11));
-      } else {
-        ctx.fillStyle = isWhite ? (brand.color || "#111") : "rgba(255,255,255,0.08)";
-        roundRect(ctx, logoX, logoY, logoSize, logoSize, Math.round(logoSize*0.18));
-        ctx.fill();
-        const logoText = brand.display.length > 8 ? (brand.abbr || brand.display[0]) : brand.display;
-        const logoFontSz = logoText.length > 5 ? Math.round(logoSize*0.22) : Math.round(logoSize*0.3);
-        ctx.font = `bold ${logoFontSz}px sans-serif`;
-        ctx.fillStyle = "#ffffff"; ctx.textAlign = "center";
-        ctx.fillText(logoText, logoX + logoSize/2, logoY + logoSize/2 + logoFontSz*0.35);
+  const downloadFramed = async () => {
+    if (!imageSrc) { showToast("Upload a photo first"); return; }
+    const node = framePreviewRef.current;
+    if (!node) { showToast("Preview not ready"); return; }
+    showToast("⏳ Preparing download...");
+    try {
+      // Dynamically load html2canvas
+      if (!window.html2canvas) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+          s.onload = resolve; s.onerror = reject;
+          document.head.appendChild(s);
+        });
       }
+      const mainImg = node.querySelector("img");
+      const scale = mainImg ? Math.max(2, mainImg.naturalWidth / mainImg.offsetWidth) : 2;
+      const canvas = await window.html2canvas(node, {
+        scale,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = `lumina-framed-${Date.now()}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.97);
+      link.click();
+      showToast("🖼️ Framed photo saved!");
+    } catch(e) {
+      showToast("❌ Download failed — try again");
+      console.error(e);
     }
-
-    // Row 1: Model
-    if (showModel) {
-      const modelLine = model || brand?.display || "Unknown Camera";
-      ctx.textAlign = "left";
-      ctx.font = `bold ${mainSz}px Georgia, serif`;
-      ctx.fillStyle = textMain;
-      ctx.fillText(modelLine, showLogo ? textX : pad, row1Y);
-    }
-    // Row 2: metadata
-    if (showMeta) {
-      const allMeta = [
-        exif?.focalLength  ? fmtFL(exif.focalLength)       : null,
-        exif?.fNumber      ? fmtF(exif.fNumber)             : null,
-        exif?.exposureTime ? fmtExposure(exif.exposureTime) : null,
-        exif?.iso          ? `ISO${exif.iso}`               : null,
-      ].filter(Boolean);
-      if (allMeta.length > 0) {
-        ctx.font = `${subSz}px -apple-system, Helvetica, sans-serif`;
-        ctx.fillStyle = textSub;
-        ctx.fillText(allMeta.join("   "), showLogo ? textX : pad, row2Y);
-      }
-    }
-    const link = document.createElement("a");
-    link.download = `lumina-framed-${Date.now()}.jpg`;
-    link.href = canvas.toDataURL("image/jpeg", 0.97); link.click();
-    showToast("🖼️ Framed photo saved!");
   };
-
-  // Helper: rounded rect for canvas
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.lineTo(x+w-r, y); ctx.arcTo(x+w,y,x+w,y+r,r);
-    ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
-    ctx.lineTo(x+r, y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
-    ctx.lineTo(x, y+r); ctx.arcTo(x,y,x+r,y,r);
-    ctx.closePath();
-  }
 
   const saveSettings = () => {
     if (!activePreset) return;
@@ -519,7 +454,7 @@ export default function LuminaV4() {
             <div style={{ fontSize:"0.54rem", color:"#444455", letterSpacing:"0.2em", fontFamily:"monospace", marginTop:2 }}>AI PHOTO ENHANCER</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.03</div>
+            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.04</div>
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.14)", borderRadius:100, padding:"4px 9px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:"#c8f060", animation:"glow 2s infinite" }} />
               <span style={{ fontSize:"0.54rem", color:"#c8f060", fontFamily:"monospace", letterSpacing:"0.1em" }}>LIVE</span>
@@ -830,11 +765,13 @@ export default function LuminaV4() {
                       </div>
                     )}
                     <div style={{ fontSize:"0.58rem", fontFamily:"monospace", color:"#444455", letterSpacing:"0.14em", marginBottom:8 }}>PREVIEW</div>
-                    <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} showLogo={showLogo} showModel={showModel} showMeta={showMeta} minimalColor={minimalColor} customLogoSrc={customLogoSrc} manualModel={manualModel} manualMeta={manualMeta} />
+                    <div ref={framePreviewRef}>
+                      <FramePreview imageSrc={imageSrc} cssFilter={currentFilter()} overlay={currentOverlay} frameTheme={frameTheme} exif={exif} showLogo={showLogo} showModel={showModel} showMeta={showMeta} minimalColor={minimalColor} customLogoSrc={customLogoSrc} manualModel={manualModel} manualMeta={manualMeta} />
+                    </div>
                   </div>
 
                   {/* Download */}
-                  <button onClick={() => downloadFramed(showLogo, showModel, showMeta, frameTheme, minimalColor)}
+                  <button onClick={() => downloadFramed()}
                     style={{ width:"100%", padding:"13px", borderRadius:10, border:"1px solid rgba(192,240,96,0.3)", background:"rgba(192,240,96,0.06)", color:"#c8f060", fontFamily:"monospace", fontSize:"0.63rem", letterSpacing:"0.14em", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     DOWNLOAD FRAMED PHOTO
@@ -856,7 +793,7 @@ export default function LuminaV4() {
           <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.03</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.04</span>
               <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
             </div>
             <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>

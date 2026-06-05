@@ -388,18 +388,10 @@ export default function LuminaV4() {
     if (!node) { showToast("Preview not ready"); return; }
     showToast("⏳ Preparing download...");
     try {
-      // Dynamically load html2canvas
-      if (!window.html2canvas) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement("script");
-          s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-          s.onload = resolve; s.onerror = reject;
-          document.head.appendChild(s);
-        });
-      }
+      const { default: html2canvas } = await import("html2canvas");
       const mainImg = node.querySelector("img");
       const scale = mainImg ? Math.max(2, mainImg.naturalWidth / mainImg.offsetWidth) : 2;
-      const canvas = await window.html2canvas(node, {
+      const canvas = await html2canvas(node, {
         scale,
         useCORS: true,
         allowTaint: true,

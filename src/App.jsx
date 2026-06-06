@@ -456,7 +456,7 @@ export default function LuminaV4() {
             <div style={{ fontSize:"0.54rem", color:"#444455", letterSpacing:"0.2em", fontFamily:"monospace", marginTop:2 }}>AI PHOTO ENHANCER</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.04</div>
+            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.05</div>
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.14)", borderRadius:100, padding:"4px 9px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:"#c8f060", animation:"glow 2s infinite" }} />
               <span style={{ fontSize:"0.54rem", color:"#c8f060", fontFamily:"monospace", letterSpacing:"0.1em" }}>LIVE</span>
@@ -795,7 +795,7 @@ export default function LuminaV4() {
           <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.04</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.05</span>
               <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
             </div>
             <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>

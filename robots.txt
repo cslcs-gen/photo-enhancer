@@ -9,5 +9,3 @@ Allow: /
 
 User-agent: WhatsApp
 Allow: /
-
-Sitemap: https://lumina.buildjoynow.com/sitemap.xml

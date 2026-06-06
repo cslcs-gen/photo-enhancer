@@ -1,5 +1,12 @@
 import { useState, useRef, useCallback } from "react";
 
+// ─── Logger ───────────────────────────────────────────────────────────────────
+const log = {
+  info:  (...a) => console.info ("[Lumina]", ...a),
+  warn:  (...a) => console.warn ("[Lumina]", ...a),
+  error: (...a) => console.error("[Lumina]", ...a),
+};
+
 // ─── EXIF Reader ──────────────────────────────────────────────────────────────
 function readEXIF(buffer) {
   try {
@@ -17,7 +24,7 @@ function readEXIF(buffer) {
         offset += 2 + view.getUint16(offset + 2);
       } else break;
     }
-  } catch(e) {}
+  } catch(e) { log.warn("EXIF read failed", e.message); }
   return null;
 }
 
@@ -30,7 +37,7 @@ function parseIFD(buffer, tiffStart) {
     const exifIFD = readUint32Tag(view, ifd0, 0x8769, le);
     if (exifIFD) Object.assign(tags, readTags(buffer, tiffStart, exifIFD, le));
     return tags;
-  } catch(e) { return {}; }
+  } catch(e) { log.warn("IFD parse failed", e.message); return {}; }
 }
 
 function readUint32Tag(view, ifdOffset, targetTag, le) {
@@ -207,7 +214,6 @@ const SLIDER_CONFIG = {
 const DEFAULT_ADJ = { contrast:0, saturation:0, brightness:0, teal:0, hue:0 };
 
 const ANIM = `
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital@1&display=swap');
 html, body, #root { height: 100%; overflow: hidden; }
 @keyframes fadeUp  { from{opacity:0;transform:translateY(8px)}  to{opacity:1;transform:translateY(0)} }
 @keyframes dot     { 0%,60%,100%{transform:translateY(0);opacity:0.3} 30%{transform:translateY(-4px);opacity:1} }
@@ -345,7 +351,11 @@ export default function LuminaV4() {
     : "transparent";
 
   const loadImage = useCallback((file) => {
-    if (!file?.type.startsWith("image/")) return;
+    if (!file?.type.startsWith("image/")) {
+      log.warn("Rejected non-image file", file?.type);
+      return;
+    }
+    log.info("Image loaded", file.name, file.type, `${(file.size/1024).toFixed(1)}kb`);
     const bufReader = new FileReader();
     bufReader.onload = (e) => setExif(readEXIF(e.target.result));
     bufReader.readAsArrayBuffer(file);
@@ -404,8 +414,8 @@ export default function LuminaV4() {
       link.click();
       showToast("🖼️ Framed photo saved!");
     } catch(e) {
+      log.error("Download failed", e.message);
       showToast("❌ Download failed — try again");
-      console.error(e);
     }
   };
 

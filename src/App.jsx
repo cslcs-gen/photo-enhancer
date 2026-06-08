@@ -331,6 +331,11 @@ export default function LuminaV4() {
   const [manualModel, setManualModel]     = useState("");
   const [manualMeta, setManualMeta]       = useState("");
   const [showManualEdit, setShowManualEdit] = useState(false);
+  const [stretchPos, setStretchPos]         = useState(0.5);
+  const [stretchDir, setStretchDir]         = useState("v");
+  const [stretchKeepSubject, setStretchKeepSubject] = useState(true);
+  const [stretchSubjectSize, setStretchSubjectSize] = useState(0.4);
+  const [stretchCanvas, setStretchCanvas]   = useState(null);
   const presetFileRef                     = useRef(null);
   const logoFileRef                       = useRef(null);
   const fileRef = useRef(null);
@@ -419,6 +424,49 @@ export default function LuminaV4() {
     }
   };
 
+  const renderStretch = useCallback((pos, dir, keepSubject, subjectSize) => {
+    if (!imageSrc) return;
+    const img = new window.Image();
+    img.onload = () => {
+      const W = img.naturalWidth;
+      const H = img.naturalHeight;
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      const tmpC = document.createElement("canvas");
+      if (dir === "h") {
+        const sliceX = Math.floor(pos * W);
+        tmpC.width = 1; tmpC.height = H;
+        const tmpCtx = tmpC.getContext("2d");
+        tmpCtx.drawImage(img, sliceX, 0, 1, H, 0, 0, 1, H);
+        ctx.drawImage(tmpC, 0, 0, 1, H, 0, 0, W, H);
+      } else {
+        const sliceY = Math.floor(pos * H);
+        tmpC.width = W; tmpC.height = 1;
+        const tmpCtx = tmpC.getContext("2d");
+        tmpCtx.drawImage(img, 0, sliceY, W, 1, 0, 0, W, 1);
+        ctx.drawImage(tmpC, 0, 0, W, 1, 0, 0, W, H);
+      }
+      if (keepSubject) {
+        const sw = Math.floor(W * subjectSize);
+        const sx = Math.max(0, Math.min(W - sw, Math.floor(pos * W - sw / 2)));
+        ctx.drawImage(img, sx, 0, sw, H, sx, 0, sw, H);
+      }
+      setStretchCanvas(canvas.toDataURL("image/jpeg", 0.97));
+      log.info("Stretch rendered", { pos, dir });
+    };
+    img.src = imageSrc;
+  }, [imageSrc]);
+
+  const downloadStretch = () => {
+    if (!stretchCanvas) { showToast("Generate a stretch first"); return; }
+    const link = document.createElement("a");
+    link.download = `lumina-stretch-${Date.now()}.jpg`;
+    link.href = stretchCanvas;
+    link.click();
+    showToast("📥 Stretch saved!");
+  };
+
   const saveSettings = () => {
     if (!activePreset) return;
     const p = PRESETS.find(p => p.id === activePreset);
@@ -456,7 +504,7 @@ export default function LuminaV4() {
             <div style={{ fontSize:"0.54rem", color:"#444455", letterSpacing:"0.2em", fontFamily:"monospace", marginTop:2 }}>AI PHOTO ENHANCER</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.05</div>
+            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.06</div>
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.14)", borderRadius:100, padding:"4px 9px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:"#c8f060", animation:"glow 2s infinite" }} />
               <span style={{ fontSize:"0.54rem", color:"#c8f060", fontFamily:"monospace", letterSpacing:"0.1em" }}>LIVE</span>
@@ -466,7 +514,7 @@ export default function LuminaV4() {
 
         {/* FIX 1: Feature tabs immediately below header — always visible */}
         <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
-          {[["enhance","✨ Enhance"],["frame","🖼️ EXIF Frame"]].map(([id,label]) => (
+          {[["enhance","✨ Enhance"],["frame","🖼️ Frame"],["stretch","〰️ Stretch"]].map(([id,label]) => (
             <button key={id} onClick={() => setActiveFeature(id)}
               style={{ flex:1, padding:"10px 0", fontFamily:"monospace", fontSize:"0.6rem", letterSpacing:"0.1em", background:"transparent", border:"none", cursor:"pointer", color:activeFeature===id?"#c8f060":"#444455", borderBottom:`2px solid ${activeFeature===id?"#c8f060":"transparent"}`, transition:"all 0.2s" }}>
               {label}
@@ -783,6 +831,81 @@ export default function LuminaV4() {
             </div>
           )}
 
+          {activeFeature === "stretch" && (
+            <div style={{ margin:"12px 14px 0" }}>
+              {!imageSrc ? (
+                <div style={{ textAlign:"center", padding:"40px 20px", color:"#444455", fontFamily:"monospace", fontSize:"0.62rem" }}>Upload a photo first</div>
+              ) : (
+                <>
+                  <div style={{ borderRadius:12, overflow:"hidden", marginBottom:14, background:"#000", border:"1px solid rgba(255,255,255,0.06)", position:"relative" }}>
+                    {stretchCanvas ? (
+                      <img src={stretchCanvas} alt="stretch-preview" style={{ width:"100%", display:"block" }} />
+                    ) : (
+                      <div style={{ position:"relative" }}>
+                        <img src={imageSrc} alt="stretch-base" style={{ width:"100%", display:"block", opacity:0.6 }} />
+                        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <span style={{ fontFamily:"monospace", fontSize:"0.58rem", color:"#c8f060", background:"rgba(0,0,0,0.6)", padding:"6px 12px", borderRadius:6 }}>SET SLICE → GENERATE</span>
+                        </div>
+                        {stretchDir === "h" ? (
+                          <div style={{ position:"absolute", top:0, bottom:0, left:`${stretchPos*100}%`, width:2, background:"#c8f060", opacity:0.9 }} />
+                        ) : (
+                          <div style={{ position:"absolute", left:0, right:0, top:`${stretchPos*100}%`, height:2, background:"#c8f060", opacity:0.9 }} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em", marginBottom:6 }}>STRETCH DIRECTION</div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      {[["h","↔ Column"],["v","↕ Row"]].map(([val,label]) => (
+                        <button key={val} onClick={() => { setStretchDir(val); setStretchCanvas(null); }}
+                          style={{ flex:1, padding:"8px", borderRadius:8, border:`1px solid ${stretchDir===val?"rgba(192,240,96,0.4)":"rgba(255,255,255,0.07)"}`, background:stretchDir===val?"rgba(192,240,96,0.08)":"transparent", color:stretchDir===val?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.54rem", cursor:"pointer" }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em" }}>SLICE POSITION</span>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060" }}>{Math.round(stretchPos*100)}%</span>
+                    </div>
+                    <input type="range" min="1" max="99" value={Math.round(stretchPos*100)} onChange={e => { setStretchPos(e.target.value/100); setStretchCanvas(null); }} style={{ width:"100%", accentColor:"#c8f060" }} />
+                    <div style={{ display:"flex", justifyContent:"space-between", marginTop:3 }}>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#333344" }}>{stretchDir==="h"?"LEFT":"TOP"}</span>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#333344" }}>{stretchDir==="h"?"RIGHT":"BOTTOM"}</span>
+                    </div>
+                  </div>
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em" }}>SUBJECT WIDTH</span>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060" }}>{Math.round(stretchSubjectSize*100)}%</span>
+                    </div>
+                    <input type="range" min="10" max="80" value={Math.round(stretchSubjectSize*100)} onChange={e => { setStretchSubjectSize(e.target.value/100); setStretchCanvas(null); }} style={{ width:"100%", accentColor:"#c8f060" }} />
+                    <div style={{ display:"flex", justifyContent:"space-between", marginTop:3 }}>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#333344" }}>NARROW</span>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#333344" }}>WIDE</span>
+                    </div>
+                  </div>
+                  <div style={{ marginBottom:14 }}>
+                    <button onClick={() => { setStretchKeepSubject(v => !v); setStretchCanvas(null); }}
+                      style={{ width:"100%", padding:"8px", borderRadius:8, border:`1px solid ${stretchKeepSubject?"rgba(192,240,96,0.4)":"rgba(255,255,255,0.07)"}`, background:stretchKeepSubject?"rgba(192,240,96,0.08)":"transparent", color:stretchKeepSubject?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.54rem", cursor:"pointer" }}>
+                      {stretchKeepSubject ? "✓" : "○"} KEEP SUBJECT ON TOP
+                    </button>
+                  </div>
+                  <div style={{ display:"flex", gap:7, marginBottom:8 }}>
+                    <button onClick={() => renderStretch(stretchPos, stretchDir, stretchKeepSubject, stretchSubjectSize)}
+                      style={{ flex:2, padding:"13px", borderRadius:10, border:"1px solid rgba(192,240,96,0.3)", background:"rgba(192,240,96,0.06)", color:"#c8f060", fontFamily:"monospace", fontSize:"0.63rem", letterSpacing:"0.14em", cursor:"pointer" }}>⚡ GENERATE</button>
+                    <button onClick={downloadStretch} disabled={!stretchCanvas}
+                      style={{ flex:1, padding:"13px", borderRadius:10, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:stretchCanvas?"#e8e8f0":"#333344", fontFamily:"monospace", fontSize:"0.63rem", cursor:stretchCanvas?"pointer":"default" }}>↓ SAVE</button>
+                  </div>
+                  {stretchCanvas && (
+                    <button onClick={() => setStretchCanvas(null)}
+                      style={{ width:"100%", padding:"9px", borderRadius:8, border:"1px solid rgba(255,255,255,0.06)", background:"transparent", color:"#444455", fontFamily:"monospace", fontSize:"0.54rem", cursor:"pointer" }}>RESET</button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Privacy */}
           <div style={{ margin:"14px 14px 0", padding:"8px 12px", background:"rgba(192,240,96,0.02)", border:"1px solid rgba(192,240,96,0.07)", borderRadius:10, display:"flex", gap:6, alignItems:"flex-start" }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c8f060" strokeWidth="2" style={{ flexShrink:0, marginTop:2, opacity:0.4 }}>
@@ -795,7 +918,7 @@ export default function LuminaV4() {
           <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.05</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.06</span>
               <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
             </div>
             <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>

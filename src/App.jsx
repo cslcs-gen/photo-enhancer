@@ -896,7 +896,7 @@ export default function LuminaV4() {
                   {/* Background color */}
                   <div style={{ marginBottom:12 }}>
                     <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em", marginBottom:8 }}>BACKGROUND COLOR</div>
-                    <div style={{ display:"flex", gap:8", flexWrap:"wrap" }}>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                       {["#1a1a2e","#0d1f12","#1f0d0d","#f5f0e8","#0a0a0a","#ffffff","#2c1810","#1a2535","#f0e6d3","#2d2d2d"].map(c => (
                         <button key={c} onClick={() => { setCaptionBg(c); setCaptionCanvas(null); }}
                           style={{ width:28, height:28, borderRadius:"50%", background:c, border:`2px solid ${captionBg===c?"#c8f060":"rgba(255,255,255,0.1)"}`, cursor:"pointer" }} />

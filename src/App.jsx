@@ -866,15 +866,23 @@ export default function LuminaV4() {
                     ) : (
                       <div>
                         {captionPos === "top" && <div style={{ background:captionBg, padding:"20px 16px", textAlign:captionAlign }}>
-                          {[captionLine1,captionLine2,captionLine3].filter(Boolean).map((l,i) => (
-                            <div key={i} style={{ color:captionColor, fontSize:i===0?"1rem":"0.7rem", opacity:i===0?1:0.7, fontFamily:i===0?"Georgia,serif":"sans-serif", marginBottom:4 }}>{l}</div>
+                          {[
+                            {t:captionLine1, f:captionFont1, s:captionSize1},
+                            {t:captionLine2, f:captionFont2, s:captionSize2},
+                            {t:captionLine3, f:captionFont3, s:captionSize3},
+                          ].filter(r => r.t).map((r,i) => (
+                            <div key={i} style={{ color:captionColor, fontSize:(r.s/16)+"rem", fontFamily:r.f, marginBottom:4 }}>{r.t}</div>
                           ))}
                           {![captionLine1,captionLine2,captionLine3].some(Boolean) && <div style={{ color:"#333344", fontSize:"0.6rem", fontFamily:"monospace" }}>ADD TEXT BELOW</div>}
                         </div>}
                         <img src={imageSrc} alt="base" style={{ width:"100%", display:"block" }} />
                         {captionPos === "bottom" && <div style={{ background:captionBg, padding:"20px 16px", textAlign:captionAlign }}>
-                          {[captionLine1,captionLine2,captionLine3].filter(Boolean).map((l,i) => (
-                            <div key={i} style={{ color:captionColor, fontSize:i===0?"1rem":"0.7rem", opacity:i===0?1:0.7, fontFamily:i===0?"Georgia,serif":"sans-serif", marginBottom:4 }}>{l}</div>
+                          {[
+                            {t:captionLine1, f:captionFont1, s:captionSize1},
+                            {t:captionLine2, f:captionFont2, s:captionSize2},
+                            {t:captionLine3, f:captionFont3, s:captionSize3},
+                          ].filter(r => r.t).map((r,i) => (
+                            <div key={i} style={{ color:captionColor, fontSize:(r.s/16)+"rem", fontFamily:r.f, marginBottom:4 }}>{r.t}</div>
                           ))}
                           {![captionLine1,captionLine2,captionLine3].some(Boolean) && <div style={{ color:"#333344", fontSize:"0.6rem", fontFamily:"monospace" }}>ADD TEXT BELOW</div>}
                         </div>}

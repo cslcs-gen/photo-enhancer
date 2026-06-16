@@ -461,17 +461,19 @@ export default function LuminaV4() {
       ].filter(l => l.text);
       if (lines.length > 0) {
         const scale = W / 1000;
-        const lineHeights = lines.map(l => Math.floor(l.size * scale * 1.5));
-        const totalTextH = lineHeights.reduce((a,b) => a+b, 0);
+        const marginPx = Math.floor(4 * scale * 4); // matches CSS marginBottom:4 (rem-scaled)
+        const rowHeights = lines.map(l => Math.floor(l.size * scale * 1.2) + marginPx);
+        const totalTextH = rowHeights.reduce((a,b) => a+b, 0) - marginPx; // no margin after last line
         let curY = panelY + (panelH - totalTextH) / 2;
         ctx.fillStyle = captionColor;
         ctx.textAlign = captionAlign;
+        ctx.textBaseline = "top";
         const textX = captionAlign === "left" ? W * 0.08 : captionAlign === "right" ? W * 0.92 : W / 2;
         lines.forEach((l, i) => {
           const px = Math.floor(l.size * scale);
           ctx.font = `${px}px ${l.font}`;
-          curY += lineHeights[i];
-          ctx.fillText(l.text, textX, curY - lineHeights[i]*0.3);
+          ctx.fillText(l.text, textX, curY);
+          curY += rowHeights[i];
         });
       }
       setCaptionCanvas(canvas.toDataURL("image/jpeg", 0.97));

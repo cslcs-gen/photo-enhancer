@@ -341,6 +341,12 @@ export default function LuminaV4() {
   const [captionAlign, setCaptionAlign]   = useState("center");
   const [captionHeight, setCaptionHeight] = useState(28); // % of image height
   const [captionCanvas, setCaptionCanvas] = useState(null);
+  const [captionFont1, setCaptionFont1]   = useState("'DM Sans',sans-serif");
+  const [captionFont2, setCaptionFont2]   = useState("'DM Sans',sans-serif");
+  const [captionFont3, setCaptionFont3]   = useState("'DM Sans',sans-serif");
+  const [captionSize1, setCaptionSize1]   = useState(34);
+  const [captionSize2, setCaptionSize2]   = useState(22);
+  const [captionSize3, setCaptionSize3]   = useState(18);
   const presetFileRef                     = useRef(null);
   const logoFileRef                       = useRef(null);
   const fileRef = useRef(null);
@@ -448,21 +454,24 @@ export default function LuminaV4() {
       ctx.fillStyle = captionBg;
       ctx.fillRect(0, panelY, W, panelH);
       // Draw text
-      const lines = [captionLine1, captionLine2, captionLine3].filter(Boolean);
+      const lines = [
+        { text: captionLine1, font: captionFont1, size: captionSize1 },
+        { text: captionLine2, font: captionFont2, size: captionSize2 },
+        { text: captionLine3, font: captionFont3, size: captionSize3 },
+      ].filter(l => l.text);
       if (lines.length > 0) {
-        const fontSize = Math.floor(W * 0.045);
-        const lineGap = Math.floor(fontSize * 1.6);
-        const totalTextH = lines.length * lineGap;
-        const startY = panelY + (panelH - totalTextH) / 2 + fontSize;
+        const scale = W / 1000;
+        const lineHeights = lines.map(l => Math.floor(l.size * scale * 1.5));
+        const totalTextH = lineHeights.reduce((a,b) => a+b, 0);
+        let curY = panelY + (panelH - totalTextH) / 2;
         ctx.fillStyle = captionColor;
-        ctx.font = `${fontSize}px Georgia, serif`;
         ctx.textAlign = captionAlign;
         const textX = captionAlign === "left" ? W * 0.08 : captionAlign === "right" ? W * 0.92 : W / 2;
-        lines.forEach((line, i) => {
-          const isFirst = i === 0;
-          if (!isFirst) { ctx.font = `${Math.floor(fontSize * 0.65)}px -apple-system, sans-serif`; ctx.globalAlpha = 0.7; }
-          ctx.fillText(line, textX, startY + i * lineGap);
-          ctx.globalAlpha = 1;
+        lines.forEach((l, i) => {
+          const px = Math.floor(l.size * scale);
+          ctx.font = `${px}px ${l.font}`;
+          curY += lineHeights[i];
+          ctx.fillText(l.text, textX, curY - lineHeights[i]*0.3);
         });
       }
       setCaptionCanvas(canvas.toDataURL("image/jpeg", 0.97));
@@ -517,7 +526,7 @@ export default function LuminaV4() {
             <div style={{ fontSize:"0.54rem", color:"#444455", letterSpacing:"0.2em", fontFamily:"monospace", marginTop:2 }}>AI PHOTO ENHANCER</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.06</div>
+            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.07</div>
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.14)", borderRadius:100, padding:"4px 9px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:"#c8f060", animation:"glow 2s infinite" }} />
               <span style={{ fontSize:"0.54rem", color:"#c8f060", fontFamily:"monospace", letterSpacing:"0.1em" }}>LIVE</span>
@@ -909,9 +918,25 @@ export default function LuminaV4() {
                   {/* Text lines */}
                   <div style={{ marginBottom:12 }}>
                     <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em", marginBottom:8 }}>TEXT (MAX 3 LINES)</div>
-                    {[[captionLine1,setCaptionLine1,"Line 1 — Main title"],[captionLine2,setCaptionLine2,"Line 2 — Subtitle"],[captionLine3,setCaptionLine3,"Line 3 — Details"]].map(([val,setter,ph],i) => (
-                      <input key={i} value={val} onChange={e => { setter(e.target.value); setCaptionCanvas(null); }} placeholder={ph}
-                        style={{ width:"100%", marginBottom:6, padding:"8px 10px", borderRadius:8, border:"1px solid rgba(255,255,255,0.08)", background:"rgba(255,255,255,0.03)", color:"#e8e8f0", fontFamily:"monospace", fontSize:"0.6rem", outline:"none" }} />
+                    {[
+                      {val:captionLine1, setter:setCaptionLine1, ph:"Line 1 — Main title", font:captionFont1, setFont:setCaptionFont1, size:captionSize1, setSize:setCaptionSize1},
+                      {val:captionLine2, setter:setCaptionLine2, ph:"Line 2 — Subtitle", font:captionFont2, setFont:setCaptionFont2, size:captionSize2, setSize:setCaptionSize2},
+                      {val:captionLine3, setter:setCaptionLine3, ph:"Line 3 — Details", font:captionFont3, setFont:setCaptionFont3, size:captionSize3, setSize:setCaptionSize3},
+                    ].map((row,i) => (
+                      <div key={i} style={{ marginBottom:10, padding:"8px", borderRadius:8, background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.05)" }}>
+                        <input value={row.val} onChange={e => { row.setter(e.target.value); setCaptionCanvas(null); }} placeholder={row.ph}
+                          style={{ width:"100%", marginBottom:6, padding:"8px 10px", borderRadius:8, border:"1px solid rgba(255,255,255,0.08)", background:"rgba(255,255,255,0.03)", color:"#e8e8f0", fontFamily:row.font, fontSize:"0.7rem", outline:"none" }} />
+                        <div style={{ display:"flex", gap:6 }}>
+                          <select value={row.font} onChange={e => { row.setFont(e.target.value); setCaptionCanvas(null); }}
+                            style={{ flex:2, padding:"6px 8px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"#0a0a0c", color:"#aaaabc", fontFamily:"monospace", fontSize:"0.5rem", outline:"none" }}>
+                            {["'DM Sans',sans-serif","Georgia,serif","'Times New Roman',serif","Arial,sans-serif","'Courier New',monospace","'Helvetica Neue',sans-serif","Verdana,sans-serif","'Playfair Display',Georgia,serif"].map(f => <option key={f} value={f} style={{fontFamily:f}}>{f.split(",")[0].replace(/'/g,"")}</option>)}
+                          </select>
+                          <select value={row.size} onChange={e => { row.setSize(Number(e.target.value)); setCaptionCanvas(null); }}
+                            style={{ flex:1, padding:"6px 8px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"#0a0a0c", color:"#aaaabc", fontFamily:"monospace", fontSize:"0.5rem", outline:"none" }}>
+                            {[12,14,16,18,20,22,24,28,32,34,38,42,48,56,64].map(s => <option key={s} value={s}>{s}px</option>)}
+                          </select>
+                        </div>
+                      </div>
                     ))}
                   </div>
 
@@ -967,7 +992,7 @@ export default function LuminaV4() {
           <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.06</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.07</span>
               <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
             </div>
             <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>

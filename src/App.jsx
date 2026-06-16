@@ -331,6 +331,16 @@ export default function LuminaV4() {
   const [manualModel, setManualModel]     = useState("");
   const [manualMeta, setManualMeta]       = useState("");
   const [showManualEdit, setShowManualEdit] = useState(false);
+  // ─── Caption Card state ───────────────────────────────────────────────────
+  const [captionPos, setCaptionPos]       = useState("bottom"); // top or bottom
+  const [captionBg, setCaptionBg]         = useState("#1a1a2e");
+  const [captionLine1, setCaptionLine1]   = useState("");
+  const [captionLine2, setCaptionLine2]   = useState("");
+  const [captionLine3, setCaptionLine3]   = useState("");
+  const [captionColor, setCaptionColor]   = useState("#f0e6d3");
+  const [captionAlign, setCaptionAlign]   = useState("center");
+  const [captionHeight, setCaptionHeight] = useState(28); // % of image height
+  const [captionCanvas, setCaptionCanvas] = useState(null);
   const presetFileRef                     = useRef(null);
   const logoFileRef                       = useRef(null);
   const fileRef = useRef(null);
@@ -419,6 +429,57 @@ export default function LuminaV4() {
     }
   };
 
+  const renderCaption = useCallback(() => {
+    if (!imageSrc) return;
+    const img = new window.Image();
+    img.onload = () => {
+      const W = img.naturalWidth;
+      const H = img.naturalHeight;
+      const panelH = Math.floor(H * (captionHeight / 100));
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H + panelH;
+      const ctx = canvas.getContext("2d");
+      // Draw image
+      const imgY = captionPos === "top" ? panelH : 0;
+      ctx.drawImage(img, 0, imgY);
+      // Draw panel
+      const panelY = captionPos === "top" ? 0 : H;
+      ctx.fillStyle = captionBg;
+      ctx.fillRect(0, panelY, W, panelH);
+      // Draw text
+      const lines = [captionLine1, captionLine2, captionLine3].filter(Boolean);
+      if (lines.length > 0) {
+        const fontSize = Math.floor(W * 0.045);
+        const lineGap = Math.floor(fontSize * 1.6);
+        const totalTextH = lines.length * lineGap;
+        const startY = panelY + (panelH - totalTextH) / 2 + fontSize;
+        ctx.fillStyle = captionColor;
+        ctx.font = `${fontSize}px Georgia, serif`;
+        ctx.textAlign = captionAlign;
+        const textX = captionAlign === "left" ? W * 0.08 : captionAlign === "right" ? W * 0.92 : W / 2;
+        lines.forEach((line, i) => {
+          const isFirst = i === 0;
+          if (!isFirst) { ctx.font = `${Math.floor(fontSize * 0.65)}px -apple-system, sans-serif`; ctx.globalAlpha = 0.7; }
+          ctx.fillText(line, textX, startY + i * lineGap);
+          ctx.globalAlpha = 1;
+        });
+      }
+      setCaptionCanvas(canvas.toDataURL("image/jpeg", 0.97));
+      log.info("Caption rendered");
+    };
+    img.src = imageSrc;
+  }, [imageSrc, captionPos, captionBg, captionLine1, captionLine2, captionLine3, captionColor, captionAlign, captionHeight]);
+
+  const downloadCaption = () => {
+    if (!captionCanvas) { showToast("Generate caption card first"); return; }
+    const link = document.createElement("a");
+    link.download = `lumina-caption-${Date.now()}.jpg`;
+    link.href = captionCanvas;
+    link.click();
+    showToast("📥 Caption card saved!");
+  };
+
   const saveSettings = () => {
     if (!activePreset) return;
     const p = PRESETS.find(p => p.id === activePreset);
@@ -456,7 +517,7 @@ export default function LuminaV4() {
             <div style={{ fontSize:"0.54rem", color:"#444455", letterSpacing:"0.2em", fontFamily:"monospace", marginTop:2 }}>AI PHOTO ENHANCER</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.05</div>
+            <div style={{ fontFamily:"monospace", fontSize:"0.53rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:4, padding:"2px 6px" }}>v5.06</div>
             <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(192,240,96,0.06)", border:"1px solid rgba(192,240,96,0.14)", borderRadius:100, padding:"4px 9px" }}>
               <div style={{ width:5, height:5, borderRadius:"50%", background:"#c8f060", animation:"glow 2s infinite" }} />
               <span style={{ fontSize:"0.54rem", color:"#c8f060", fontFamily:"monospace", letterSpacing:"0.1em" }}>LIVE</span>
@@ -466,7 +527,7 @@ export default function LuminaV4() {
 
         {/* FIX 1: Feature tabs immediately below header — always visible */}
         <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,0.06)", flexShrink:0 }}>
-          {[["enhance","✨ Enhance"],["frame","🖼️ EXIF Frame"]].map(([id,label]) => (
+          {[["enhance","✨ Enhance"],["frame","🖼️ Frame"],["caption","🎨 Caption"]].map(([id,label]) => (
             <button key={id} onClick={() => setActiveFeature(id)}
               style={{ flex:1, padding:"10px 0", fontFamily:"monospace", fontSize:"0.6rem", letterSpacing:"0.1em", background:"transparent", border:"none", cursor:"pointer", color:activeFeature===id?"#c8f060":"#444455", borderBottom:`2px solid ${activeFeature===id?"#c8f060":"transparent"}`, transition:"all 0.2s" }}>
               {label}
@@ -783,6 +844,117 @@ export default function LuminaV4() {
             </div>
           )}
 
+          {activeFeature === "caption" && (
+            <div style={{ margin:"12px 14px 0" }}>
+              {!imageSrc ? (
+                <div style={{ textAlign:"center", padding:"40px 20px", color:"#444455", fontFamily:"monospace", fontSize:"0.62rem" }}>Upload a photo first</div>
+              ) : (
+                <>
+                  {/* Preview */}
+                  <div style={{ borderRadius:12, overflow:"hidden", marginBottom:14, border:"1px solid rgba(255,255,255,0.06)" }}>
+                    {captionCanvas ? (
+                      <img src={captionCanvas} alt="caption-preview" style={{ width:"100%", display:"block" }} />
+                    ) : (
+                      <div>
+                        {captionPos === "top" && <div style={{ background:captionBg, padding:"20px 16px", textAlign:captionAlign }}>
+                          {[captionLine1,captionLine2,captionLine3].filter(Boolean).map((l,i) => (
+                            <div key={i} style={{ color:captionColor, fontSize:i===0?"1rem":"0.7rem", opacity:i===0?1:0.7, fontFamily:i===0?"Georgia,serif":"sans-serif", marginBottom:4 }}>{l}</div>
+                          ))}
+                          {![captionLine1,captionLine2,captionLine3].some(Boolean) && <div style={{ color:"#333344", fontSize:"0.6rem", fontFamily:"monospace" }}>ADD TEXT BELOW</div>}
+                        </div>}
+                        <img src={imageSrc} alt="base" style={{ width:"100%", display:"block" }} />
+                        {captionPos === "bottom" && <div style={{ background:captionBg, padding:"20px 16px", textAlign:captionAlign }}>
+                          {[captionLine1,captionLine2,captionLine3].filter(Boolean).map((l,i) => (
+                            <div key={i} style={{ color:captionColor, fontSize:i===0?"1rem":"0.7rem", opacity:i===0?1:0.7, fontFamily:i===0?"Georgia,serif":"sans-serif", marginBottom:4 }}>{l}</div>
+                          ))}
+                          {![captionLine1,captionLine2,captionLine3].some(Boolean) && <div style={{ color:"#333344", fontSize:"0.6rem", fontFamily:"monospace" }}>ADD TEXT BELOW</div>}
+                        </div>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Panel position */}
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em", marginBottom:6 }}>PANEL POSITION</div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      {[["top","↑ Top"],["bottom","↓ Bottom"]].map(([val,label]) => (
+                        <button key={val} onClick={() => { setCaptionPos(val); setCaptionCanvas(null); }}
+                          style={{ flex:1, padding:"8px", borderRadius:8, border:`1px solid ${captionPos===val?"rgba(192,240,96,0.4)":"rgba(255,255,255,0.07)"}`, background:captionPos===val?"rgba(192,240,96,0.08)":"transparent", color:captionPos===val?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.54rem", cursor:"pointer" }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Panel height */}
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em" }}>PANEL HEIGHT</span>
+                      <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060" }}>{captionHeight}%</span>
+                    </div>
+                    <input type="range" min="10" max="60" value={captionHeight} onChange={e => { setCaptionHeight(Number(e.target.value)); setCaptionCanvas(null); }} style={{ width:"100%", accentColor:"#c8f060" }} />
+                  </div>
+
+                  {/* Background color */}
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em", marginBottom:8 }}>BACKGROUND COLOR</div>
+                    <div style={{ display:"flex", gap:8", flexWrap:"wrap" }}>
+                      {["#1a1a2e","#0d1f12","#1f0d0d","#f5f0e8","#0a0a0a","#ffffff","#2c1810","#1a2535","#f0e6d3","#2d2d2d"].map(c => (
+                        <button key={c} onClick={() => { setCaptionBg(c); setCaptionCanvas(null); }}
+                          style={{ width:28, height:28, borderRadius:"50%", background:c, border:`2px solid ${captionBg===c?"#c8f060":"rgba(255,255,255,0.1)"}`, cursor:"pointer" }} />
+                      ))}
+                      <input type="color" value={captionBg} onChange={e => { setCaptionBg(e.target.value); setCaptionCanvas(null); }}
+                        style={{ width:28, height:28, borderRadius:"50%", border:"2px solid rgba(255,255,255,0.1)", cursor:"pointer", padding:0, background:"none" }} />
+                    </div>
+                  </div>
+
+                  {/* Text lines */}
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em", marginBottom:8 }}>TEXT (MAX 3 LINES)</div>
+                    {[[captionLine1,setCaptionLine1,"Line 1 — Main title"],[captionLine2,setCaptionLine2,"Line 2 — Subtitle"],[captionLine3,setCaptionLine3,"Line 3 — Details"]].map(([val,setter,ph],i) => (
+                      <input key={i} value={val} onChange={e => { setter(e.target.value); setCaptionCanvas(null); }} placeholder={ph}
+                        style={{ width:"100%", marginBottom:6, padding:"8px 10px", borderRadius:8, border:"1px solid rgba(255,255,255,0.08)", background:"rgba(255,255,255,0.03)", color:"#e8e8f0", fontFamily:"monospace", fontSize:"0.6rem", outline:"none" }} />
+                    ))}
+                  </div>
+
+                  {/* Text color */}
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em", marginBottom:8 }}>TEXT COLOR</div>
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                      {["#f0e6d3","#ffffff","#0a0a0a","#c8f060","#f0c060","#e8e8f0","#aaaabc","#c8a080"].map(c => (
+                        <button key={c} onClick={() => { setCaptionColor(c); setCaptionCanvas(null); }}
+                          style={{ width:28, height:28, borderRadius:"50%", background:c, border:`2px solid ${captionColor===c?"#c8f060":"rgba(255,255,255,0.1)"}`, cursor:"pointer" }} />
+                      ))}
+                      <input type="color" value={captionColor} onChange={e => { setCaptionColor(e.target.value); setCaptionCanvas(null); }}
+                        style={{ width:28, height:28, borderRadius:"50%", border:"2px solid rgba(255,255,255,0.1)", cursor:"pointer", padding:0, background:"none" }} />
+                    </div>
+                  </div>
+
+                  {/* Text alignment */}
+                  <div style={{ marginBottom:14 }}>
+                    <div style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#555566", letterSpacing:"0.14em", marginBottom:6 }}>TEXT ALIGNMENT</div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      {[["left","← Left"],["center","— Center"],["right","→ Right"]].map(([val,label]) => (
+                        <button key={val} onClick={() => { setCaptionAlign(val); setCaptionCanvas(null); }}
+                          style={{ flex:1, padding:"8px", borderRadius:8, border:`1px solid ${captionAlign===val?"rgba(192,240,96,0.4)":"rgba(255,255,255,0.07)"}`, background:captionAlign===val?"rgba(192,240,96,0.08)":"transparent", color:captionAlign===val?"#c8f060":"#555566", fontFamily:"monospace", fontSize:"0.54rem", cursor:"pointer" }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Generate + Download */}
+                  <div style={{ display:"flex", gap:7, marginBottom:8 }}>
+                    <button onClick={renderCaption}
+                      style={{ flex:2, padding:"13px", borderRadius:10, border:"1px solid rgba(192,240,96,0.3)", background:"rgba(192,240,96,0.06)", color:"#c8f060", fontFamily:"monospace", fontSize:"0.63rem", letterSpacing:"0.14em", cursor:"pointer" }}>⚡ GENERATE</button>
+                    <button onClick={downloadCaption} disabled={!captionCanvas}
+                      style={{ flex:1, padding:"13px", borderRadius:10, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:captionCanvas?"#e8e8f0":"#333344", fontFamily:"monospace", fontSize:"0.63rem", cursor:captionCanvas?"pointer":"default" }}>↓ SAVE</button>
+                  </div>
+                  {captionCanvas && (
+                    <button onClick={() => setCaptionCanvas(null)}
+                      style={{ width:"100%", padding:"9px", borderRadius:8, border:"1px solid rgba(255,255,255,0.06)", background:"transparent", color:"#444455", fontFamily:"monospace", fontSize:"0.54rem", cursor:"pointer" }}>RESET</button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Privacy */}
           <div style={{ margin:"14px 14px 0", padding:"8px 12px", background:"rgba(192,240,96,0.02)", border:"1px solid rgba(192,240,96,0.07)", borderRadius:10, display:"flex", gap:6, alignItems:"flex-start" }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c8f060" strokeWidth="2" style={{ flexShrink:0, marginTop:2, opacity:0.4 }}>
@@ -795,7 +967,7 @@ export default function LuminaV4() {
           <div style={{ margin:"12px 14px 0", paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
               <span style={{ fontFamily:"Georgia,serif", fontSize:"0.7rem", fontWeight:700, color:"#c8f060", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lumina</span>
-              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.05</span>
+              <span style={{ fontFamily:"monospace", fontSize:"0.52rem", color:"#c8f060", background:"rgba(192,240,96,0.12)", border:"1px solid rgba(192,240,96,0.3)", borderRadius:3, padding:"1px 5px" }}>v5.06</span>
               <span style={{ fontFamily:"monospace", fontSize:"0.48rem", color:"#2a2a38" }}>Jun 2026</span>
             </div>
             <span style={{ fontSize:"0.54rem", color:"#2a2a38", fontFamily:"monospace" }}>Powered by Claude AI</span>

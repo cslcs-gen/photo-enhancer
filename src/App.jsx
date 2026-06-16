@@ -461,18 +461,27 @@ export default function LuminaV4() {
       ].filter(l => l.text);
       if (lines.length > 0) {
         const scale = W / 1000;
-        const marginPx = Math.floor(4 * scale * 4); // matches CSS marginBottom:4 (rem-scaled)
-        const rowHeights = lines.map(l => Math.floor(l.size * scale * 1.2) + marginPx);
-        const totalTextH = rowHeights.reduce((a,b) => a+b, 0) - marginPx; // no margin after last line
+        // Matches live CSS: fontSize:(s/16)+"rem", lineHeight:1.2, marginBottom:(s/16)*0.25+"rem"
+        // 1rem = 16px in browser; we scale that 16px baseline by our canvas/preview-width ratio.
+        const remPx = 16 * scale;
+        const rowHeights = lines.map(l => {
+          const fontPx = (l.size / 16) * remPx;
+          const lineBoxPx = fontPx * 1.2;
+          const marginPx = (l.size / 16) * 0.25 * remPx;
+          return lineBoxPx + marginPx;
+        });
+        const totalTextH = rowHeights.reduce((a,b) => a+b, 0) - (((lines[lines.length-1].size/16)*0.25*remPx));
         let curY = panelY + (panelH - totalTextH) / 2;
         ctx.fillStyle = captionColor;
         ctx.textAlign = captionAlign;
         ctx.textBaseline = "top";
         const textX = captionAlign === "left" ? W * 0.08 : captionAlign === "right" ? W * 0.92 : W / 2;
         lines.forEach((l, i) => {
-          const px = Math.floor(l.size * scale);
-          ctx.font = `${px}px ${l.font}`;
-          ctx.fillText(l.text, textX, curY);
+          const fontPx = (l.size / 16) * remPx;
+          ctx.font = `${Math.floor(fontPx)}px ${l.font}`;
+          const lineBoxPx = fontPx * 1.2;
+          const textOffsetInBox = (lineBoxPx - fontPx) / 2; // center glyph within line-height box
+          ctx.fillText(l.text, textX, curY + textOffsetInBox);
           curY += rowHeights[i];
         });
       }
@@ -867,18 +876,18 @@ export default function LuminaV4() {
                       <img src={captionCanvas} alt="caption-preview" style={{ width:"100%", display:"block" }} />
                     ) : (
                       <div>
-                        {captionPos === "top" && <div style={{ background:captionBg, padding:"20px 16px", textAlign:captionAlign }}>
+                        {captionPos === "top" && <div style={{ position:"relative", background:captionBg, textAlign:captionAlign, display:"flex", flexDirection:"column", justifyContent:"center", height:`${captionHeight}vw`, minHeight:60, boxSizing:"border-box", padding:"0 16px" }}>
                           {[
                             {t:captionLine1, f:captionFont1, s:captionSize1},
                             {t:captionLine2, f:captionFont2, s:captionSize2},
                             {t:captionLine3, f:captionFont3, s:captionSize3},
                           ].filter(r => r.t).map((r,i) => (
-                            <div key={i} style={{ color:captionColor, fontSize:(r.s/16)+"rem", fontFamily:r.f, marginBottom:4 }}>{r.t}</div>
+                            <div key={i} style={{ color:captionColor, fontSize:(r.s/16)+"rem", fontFamily:r.f, lineHeight:1.2, marginBottom:(r.s/16)*0.25+"rem" }}>{r.t}</div>
                           ))}
                           {![captionLine1,captionLine2,captionLine3].some(Boolean) && <div style={{ color:"#333344", fontSize:"0.6rem", fontFamily:"monospace" }}>ADD TEXT BELOW</div>}
                         </div>}
                         <img src={imageSrc} alt="base" style={{ width:"100%", display:"block" }} />
-                        {captionPos === "bottom" && <div style={{ background:captionBg, padding:"20px 16px", textAlign:captionAlign }}>
+                        {captionPos === "bottom" && <div style={{ position:"relative", background:captionBg, textAlign:captionAlign, display:"flex", flexDirection:"column", justifyContent:"center", height:`${captionHeight}vw`, minHeight:60, boxSizing:"border-box", padding:"0 16px" }}>
                           {[
                             {t:captionLine1, f:captionFont1, s:captionSize1},
                             {t:captionLine2, f:captionFont2, s:captionSize2},
